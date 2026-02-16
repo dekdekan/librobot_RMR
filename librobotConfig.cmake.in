@@ -1,0 +1,12 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Forward dependencies
+if(NOT @LIBROBOT_DISABLE_OPENCV@)
+    find_dependency(OpenCV REQUIRED)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/librobotTargets.cmake")
+
+check_required_components(librobot)
