@@ -1,0 +1,160 @@
+name: Build Library with CMake
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      QT_VERSION: 6.6.2
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # -----------------------
+      # Install Qt
+      # -----------------------
+      - name: Install Qt (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2019_64 
+
+      - name: Install Qt (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: desktop
+          arch: clang_64
+
+      - name: Install Qt (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: gcc_64
+
+      # -----------------------
+      # Install OpenCV
+      # -----------------------
+      - name: Install OpenCV (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libopencv-dev build-essential
+
+      - name: Install OpenCV (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install opencv
+
+      - name: Install OpenCV (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          choco install opencv --version=4.5.5 -y
+          echo "OpenCV_DIR=C:\tools\opencv\build" >> $env:GITHUB_ENV
+
+      # -----------------------
+      # Build & Install Linux/macOS (Release + Debug)
+      # -----------------------
+      - name: Build & Install (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          mkdir -p build && cd build
+          
+          # Build Release
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../package
+          cmake --build . --config Release --parallel
+          cmake --install . --config Release
+          
+          # Build Debug
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=../package
+          cmake --build . --config Debug --parallel
+          cmake --install . --config Debug
+          
+          cd ..
+          mkdir -p artifacts
+          zip -r artifacts/robotlib-${{ matrix.os }}.zip package
+
+      # -----------------------
+      # Setup MSVC Windows environment
+      # -----------------------
+      - name: Setup MSVC 2022
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # -----------------------
+      # Build & Install Windows MSVC (Release + Debug)
+      # -----------------------
+      - name: Build & Install (Windows MSVC)
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: |
+          mkdir build
+          cd build
+          
+          :: Configure (Multi-config generators like VS handle Release/Debug in one config step)
+          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_INSTALL_PREFIX=..\package
+          
+          :: Build & Install Release
+          cmake --build . --config Release
+          cmake --install . --config Release
+          
+          :: Build & Install Debug
+          cmake --build . --config Debug
+          cmake --install . --config Debug
+          
+          cd ..
+          if not exist artifacts mkdir artifacts
+          powershell Compress-Archive -Path package\* -DestinationPath artifacts\robotlib-windows-latest.zip
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: robotlib-${{ matrix.os }}
+          path: artifacts/
+
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+          pattern: robotlib-*
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: all-artifacts/*.zip
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
