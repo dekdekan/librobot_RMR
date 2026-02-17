@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(librobot VERSION 1.0.0 LANGUAGES CXX)
+project(librobot VERSION 1.1.0 LANGUAGES CXX)
 
 option(LIBROBOT_DISABLE_OPENCV "Disable OpenCV support" ON)
 option(LIBROBOT_DISABLE_SKELETON "Disable skeleton module" ON)

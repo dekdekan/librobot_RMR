@@ -10,75 +10,112 @@ on:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        include:
+          - os: windows-latest
+            qt_arch: win64_msvc2019_64
+            id: windows
+          - os: macos-latest
+            qt_arch: clang_64
+            id: macos
+          - os: ubuntu-22.04
+            qt_arch: gcc_64
+            id: ubuntu-22
+          - os: ubuntu-24.04
+            qt_arch: gcc_64
+            id: ubuntu-24
+          - os: ubuntu-22.04
+            container: "ubuntu:20.04"
+            qt_arch: gcc_64
+            id: ubuntu-20-docker
+
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+
     env:
       QT_VERSION: 6.6.2
+      DEBIAN_FRONTEND: noninteractive
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Ubuntu 20.04 Environment
+        if: matrix.id == 'ubuntu-20-docker'
+        run: |
+          apt-get update
+          apt-get install -y sudo tzdata curl git build-essential cmake \
+            libxcb-xinerama0 libxkbcommon-x11-0 \
+            python3-pip python3-venv python3-dev
+          python3 -m pip install --upgrade "pip<25.0"
+          python3 -m pip install setuptools wheel "py7zr==0.20.2"
+          rm -rf /__t/Python
+
+      - name: Set up Python (Native Runners)
+        if: matrix.id != 'ubuntu-20-docker'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # -----------------------
-      # Install Dependencies
-      # -----------------------
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
         with:
           version: ${{ env.QT_VERSION }}
-          arch: ${{ matrix.os == 'windows-latest' && 'win64_msvc2019_64' || (matrix.os == 'macos-latest' && 'clang_64' || 'gcc_64') }}
+          arch: ${{ matrix.qt_arch }}
+          setup-python: ${{ matrix.id == 'ubuntu-20-docker' && 'false' || 'true' }}
+        env:
+          pythonExecutable: ${{ matrix.id == 'ubuntu-20-docker' && '/usr/bin/python3' || '' }}
 
       - name: Install NSIS (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.id == 'windows'
         shell: pwsh
         run: |
           choco install nsis -y
           echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
 
-      - name: Install Build Essentials (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install Build Essentials (Native Linux)
+        if: matrix.id == 'ubuntu-22' || matrix.id == 'ubuntu-24'
         run: sudo apt-get update && sudo apt-get install -y build-essential
 
-      # -----------------------
-      # Build and Package
-      # -----------------------
       - name: Setup MSVC (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.id == 'windows'
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Build and Package
         shell: bash
         run: |
-          mkdir build && cd build
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            # Windows (Multi-config): Build both, then package once
+          mkdir -p build
+          cd build
+          if [ "${{ matrix.id }}" == "windows" ]; then
             cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_INSTALL_PREFIX=./install
             cmake --build . --config Release --parallel
             cmake --build . --config Debug --parallel
-            cpack -C "Release;Debug"
+            cpack -C "Release;Debug" -G NSIS
+            cpack -C "Release;Debug" -G ZIP
           else
-            # Linux/macOS (Single-config): Install Release, then Build/Install Debug
             cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=./install
             cmake --build . --parallel
             cmake --install .
-            
             cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=./install
             cmake --build . --parallel
             cmake --install .
-            
             cpack
+            
+            # Premenovanie balíkov pre Linux/macOS, aby sa v release neprepísali
+            for f in RobotLib-*; do
+              if [ -f "$f" ]; then
+                ext="${f##*.}"
+                base="${f%.*}"
+                mv "$f" "${base}-${{ matrix.id }}.${ext}"
+              fi
+            done
           fi
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: robotlib-installers-${{ matrix.os }}
+          name: robotlib-installers-${{ matrix.id }}
           path: build/RobotLib-*
           if-no-files-found: error
 
@@ -89,18 +126,22 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download all artifacts
+      - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-assets
           pattern: robotlib-installers-*
           merge-multiple: true
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*
           name: RobotLib ${{ github.ref_name }}
-          body: "RMR robotlib installer (Release + Debug). Qt must be installed separately by the user."
+          body: |
+            Automatický release RobotLib.
+            - Windows (NSIS + ZIP)
+            - Linux (Debian balíky/archívy podľa verzií Ubuntu)
+            - macOS
           draft: false
           prerelease: false
