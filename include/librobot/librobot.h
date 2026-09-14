@@ -18,8 +18,12 @@
 #include "robot_global.h"
 #include "rplidar.h"
 #include "udp_communication.h"
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+#include "amcl_types.h"
+#endif
 #include <algorithm>
 #include <atomic>
+#include <filesystem>
 #include <functional>
 #include <future>
 #include <iostream>
@@ -80,6 +84,16 @@ public:
 
   void setRotationSpeed(double radpersec);
   void setArcSpeed(int mmpersec, int radius);
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+  bool setAMCLParameters(const std::filesystem::path &mapPath,
+                         int particleCount, double rotationStd,
+                         double translationStd, AMCLCallback callback,
+                         std::string *errorMessage = nullptr);
+  Particle getBestParticle() const;
+  const GridMap &getAmclMap() const;
+  void getGridCoordinates(double realX, double realY, int &gridX,
+                          int &gridY) const;
+#endif
 #ifndef DISABLE_OPENCV
   void setCameraParameters(std::function<int(const cv::Mat &)> callback,
                            std::string link) {

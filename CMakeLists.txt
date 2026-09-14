@@ -1,20 +1,31 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.21)
 
-project(librobot VERSION 1.0.0 LANGUAGES CXX)
+project(librobot VERSION 1.1.0 LANGUAGES CXX)
 
-option(LIBROBOT_DISABLE_OPENCV "Disable OpenCV support" ON)
+option(LIBROBOT_ENABLE_AMCL "Build AMCL localization support" OFF)
+option(LIBROBOT_ENABLE_OPENCV "Build camera support using OpenCV" ON)
+option(LIBROBOT_DISABLE_OPENCV "Deprecated: disable OpenCV support" OFF)
 option(LIBROBOT_DISABLE_SKELETON "Disable skeleton module" ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-if(NOT LIBROBOT_DISABLE_OPENCV)
+if(LIBROBOT_DISABLE_OPENCV)
+    set(LIBROBOT_ENABLE_OPENCV OFF CACHE BOOL "Build camera support using OpenCV" FORCE)
+endif()
+
+if(LIBROBOT_ENABLE_OPENCV)
     find_package(OpenCV REQUIRED)
 endif()
 
 include(GNUInstallDirs)
 add_subdirectory(src)
+
+include(CTest)
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
 
 include(CMakePackageConfigHelpers)
 configure_package_config_file(

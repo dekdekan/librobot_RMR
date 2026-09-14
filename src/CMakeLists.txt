@@ -22,20 +22,25 @@ target_compile_definitions(librobot PRIVATE
     ROBOT_LIBRARY
 )
 
+if(LIBROBOT_ENABLE_AMCL)
+    target_compile_definitions(librobot PUBLIC LIBROBOT_HAS_AMCL=1)
+else()
+    target_compile_definitions(librobot PUBLIC DISABLE_AMCL)
+endif()
+
 if(LIBROBOT_DISABLE_SKELETON)
     target_compile_definitions(librobot PUBLIC DISABLE_SKELETON)
 endif()
 
-if(NOT LIBROBOT_DISABLE_OPENCV)
-    find_package(OpenCV REQUIRED)
+if(LIBROBOT_ENABLE_OPENCV)
+    target_compile_definitions(librobot PUBLIC LIBROBOT_HAS_OPENCV=1)
     target_link_libraries(librobot PUBLIC ${OpenCV_LIBS})
 else()
     target_compile_definitions(librobot PUBLIC DISABLE_OPENCV)
 endif()
 
 
-
-find_package(Qt6 REQUIRED COMPONENTS Core Network) 
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Network)
 
 target_link_libraries(librobot PUBLIC Qt6::Core Qt6::Network) 
 
