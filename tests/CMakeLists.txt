@@ -14,6 +14,10 @@ else()
     target_link_libraries(librobot_opencv_feature_off_probe PRIVATE librobot::librobot)
 endif()
 
+add_executable(librobot_grid_map_defaults_test grid_map_defaults_test.cpp)
+target_link_libraries(librobot_grid_map_defaults_test PRIVATE librobot::librobot)
+add_test(NAME librobot.grid_map_defaults COMMAND librobot_grid_map_defaults_test)
+
 set(librobot_parent_make_program "${CMAKE_MAKE_PROGRAM}")
 set(librobot_parent_archiver "${CMAKE_AR}")
 if(CMAKE_GENERATOR STREQUAL "NMake Makefiles")
