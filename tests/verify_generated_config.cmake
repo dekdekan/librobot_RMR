@@ -1,0 +1,23 @@
+if(NOT DEFINED CONFIG_FILE OR NOT DEFINED EXPECT_OPENCV)
+    message(FATAL_ERROR "CONFIG_FILE and EXPECT_OPENCV are required.")
+endif()
+
+file(READ "${CONFIG_FILE}" config_contents)
+string(REPLACE "\r\n" "\n" config_contents "${config_contents}")
+
+string(FIND "${config_contents}" "find_dependency(OpenCV REQUIRED)" opencv_dependency_index)
+if(opencv_dependency_index EQUAL -1)
+    message(FATAL_ERROR "Generated librobotConfig.cmake must retain the OpenCV dependency branch.")
+endif()
+
+if(EXPECT_OPENCV)
+    string(FIND "${config_contents}" "if(ON)" feature_guard_index)
+    if(feature_guard_index EQUAL -1)
+        message(FATAL_ERROR "OpenCV-enabled configuration must activate the OpenCV dependency branch.")
+    endif()
+else()
+    string(FIND "${config_contents}" "if(OFF)" feature_guard_index)
+    if(feature_guard_index EQUAL -1)
+        message(FATAL_ERROR "OpenCV-disabled configuration must omit the OpenCV dependency branch.")
+    endif()
+endif()

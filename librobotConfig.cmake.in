@@ -3,7 +3,7 @@
 include(CMakeFindDependencyMacro)
 
 # Forward dependencies
-if(NOT @LIBROBOT_DISABLE_OPENCV@)
+if(@LIBROBOT_ENABLE_OPENCV@)
     find_dependency(OpenCV REQUIRED)
 endif()
 

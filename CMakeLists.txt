@@ -5,6 +5,7 @@ project(librobot VERSION 1.1.0 LANGUAGES CXX)
 option(LIBROBOT_ENABLE_AMCL "Build AMCL localization support" OFF)
 option(LIBROBOT_ENABLE_OPENCV "Build camera support using OpenCV" ON)
 option(LIBROBOT_DISABLE_OPENCV "Deprecated: disable OpenCV support" OFF)
+option(LIBROBOT_BUILD_TESTING "Build librobot tests when used as a subproject" OFF)
 option(LIBROBOT_DISABLE_SKELETON "Disable skeleton module" ON)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -23,7 +24,7 @@ include(GNUInstallDirs)
 add_subdirectory(src)
 
 include(CTest)
-if(BUILD_TESTING)
+if(BUILD_TESTING AND (PROJECT_IS_TOP_LEVEL OR LIBROBOT_BUILD_TESTING))
     add_subdirectory(tests)
 endif()
 

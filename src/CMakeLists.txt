@@ -18,6 +18,8 @@ target_include_directories(librobot
         $<INSTALL_INTERFACE:include>
 )
 
+target_compile_features(librobot PUBLIC cxx_std_20)
+
 target_compile_definitions(librobot PRIVATE
     ROBOT_LIBRARY
 )
