@@ -39,6 +39,23 @@ add_executable(librobot_runtime_lifecycle_test runtime_lifecycle_test.cpp)
 target_link_libraries(librobot_runtime_lifecycle_test PRIVATE librobot::librobot)
 add_test(NAME librobot.runtime_lifecycle COMMAND librobot_runtime_lifecycle_test)
 
+add_executable(librobot_udp_command_ownership_test
+    udp_command_ownership_test.cpp
+    ${PROJECT_SOURCE_DIR}/src/udp_communication.cpp
+)
+target_link_libraries(librobot_udp_command_ownership_test PRIVATE librobot::librobot)
+add_test(NAME librobot.udp_command_ownership
+    COMMAND librobot_udp_command_ownership_test)
+set_tests_properties(librobot.udp_command_ownership PROPERTIES TIMEOUT 60)
+
+add_executable(librobot_runtime_worker_test
+    runtime_worker_test.cpp
+    ${PROJECT_SOURCE_DIR}/src/CKobuki.cpp
+)
+target_link_libraries(librobot_runtime_worker_test PRIVATE librobot::librobot)
+add_test(NAME librobot.runtime_worker COMMAND librobot_runtime_worker_test)
+set_tests_properties(librobot.runtime_worker PROPERTIES TIMEOUT 60)
+
 add_executable(librobot_grid_map_defaults_test grid_map_defaults_test.cpp)
 target_link_libraries(librobot_grid_map_defaults_test PRIVATE librobot::librobot)
 add_test(NAME librobot.grid_map_defaults COMMAND librobot_grid_map_defaults_test)
@@ -93,7 +110,11 @@ if(WIN32)
     endif()
     string(APPEND librobot_test_runtime_path "\\;${librobot_test_path}")
 
-    set(librobot_runtime_tests librobot.runtime_lifecycle)
+    set(librobot_runtime_tests
+        librobot.runtime_lifecycle
+        librobot.udp_command_ownership
+        librobot.runtime_worker
+    )
     if(LIBROBOT_ENABLE_AMCL)
         list(APPEND librobot_runtime_tests librobot.amcl_integration)
     endif()

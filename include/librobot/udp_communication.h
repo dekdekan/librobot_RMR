@@ -5,7 +5,9 @@
 #include <QHostAddress>
 #include <QString>
 #include <QUdpSocket>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 class udp_communication {
@@ -21,10 +23,16 @@ public:
     int getMessage(char *message, int maxSize);
 
 private:
+    int sendDatagram(const std::vector<unsigned char> &message);
+    int sendPendingMessages();
+
     QUdpSocket *socket{nullptr};
     QHostAddress destAddress;
     quint16 destPort{0};
     QByteArray buffer;
+    std::mutex pendingMessagesMutex;
+    std::vector<std::vector<unsigned char>> pendingMessages;
+    std::thread::id ownerThread;
 };
 
 #endif // UDP_COMMUNICATION_H
