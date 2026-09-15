@@ -7,7 +7,8 @@ if(NOT DEFINED LIBROBOT_SOURCE_DIR)
 endif()
 
 set(BUILD_TESTING ON CACHE BOOL "Build tests in the parent fixture." FORCE)
-set(LIBROBOT_ENABLE_AMCL ON CACHE BOOL "Exercise the AMCL test-target path." FORCE)
+set(LIBROBOT_ENABLE_AMCL "${LIBROBOT_PARENT_ENABLE_AMCL}" CACHE BOOL
+    "Match the parent fixture's AMCL state to the outer librobot build." FORCE)
 set(LIBROBOT_ENABLE_OPENCV OFF CACHE BOOL "Avoid OpenCV in the parent fixture." FORCE)
 
 add_subdirectory("${LIBROBOT_SOURCE_DIR}" librobot)

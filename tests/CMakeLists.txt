@@ -58,9 +58,7 @@ add_test(
         -P ${CMAKE_CURRENT_SOURCE_DIR}/verify_generated_config.cmake
 )
 
-add_test(
-    NAME librobot.parent_subproject_configure
-    COMMAND ${CMAKE_COMMAND}
+set(librobot_parent_subproject_arguments
         -S ${CMAKE_CURRENT_SOURCE_DIR}/parent-subproject
         -B ${CMAKE_CURRENT_BINARY_DIR}/parent-subproject
         -G "${CMAKE_GENERATOR}"
@@ -69,5 +67,15 @@ add_test(
         -DCMAKE_AR:FILEPATH=${librobot_parent_archiver}
         -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
         -DLIBROBOT_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+        -DLIBROBOT_PARENT_ENABLE_AMCL=${LIBROBOT_ENABLE_AMCL}
+)
+if(LIBROBOT_ENABLE_AMCL AND FETCHCONTENT_SOURCE_DIR_AMCL)
+    list(APPEND librobot_parent_subproject_arguments
         -DFETCHCONTENT_SOURCE_DIR_AMCL=${FETCHCONTENT_SOURCE_DIR_AMCL}
+    )
+endif()
+
+add_test(
+    NAME librobot.parent_subproject_configure
+    COMMAND ${CMAKE_COMMAND} ${librobot_parent_subproject_arguments}
 )
