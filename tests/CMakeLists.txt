@@ -125,3 +125,35 @@ if(WIN32)
         ENVIRONMENT "PATH=${librobot_test_runtime_path}"
     )
 endif()
+
+set(librobot_consumer_opencv_runtime_dir "")
+if(WIN32 AND LIBROBOT_ENABLE_OPENCV)
+    get_filename_component(librobot_consumer_opencv_runtime_dir
+        "${OpenCV_DIR}/../bin" ABSOLUTE)
+endif()
+add_test(
+    NAME librobot.consumer
+    COMMAND ${CMAKE_COMMAND}
+        -DLIBROBOT_BUILD_DIR=${CMAKE_BINARY_DIR}
+        -DLIBROBOT_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/consumer-install
+        -DLIBROBOT_CONSUMER_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/consumer
+        -DLIBROBOT_CONSUMER_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/consumer-build
+        -DLIBROBOT_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DLIBROBOT_GENERATOR=${CMAKE_GENERATOR}
+        -DLIBROBOT_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+        -DLIBROBOT_MAKE_PROGRAM=${librobot_parent_make_program}
+        -DLIBROBOT_RC_COMPILER=${CMAKE_RC_COMPILER}
+        -DLIBROBOT_MT=${CMAKE_MT}
+        -DLIBROBOT_EXPECT_AMCL=${LIBROBOT_ENABLE_AMCL}
+        -DLIBROBOT_EXPECT_OPENCV=${LIBROBOT_ENABLE_OPENCV}
+        -DLIBROBOT_INSTALL_LIBDIR=${CMAKE_INSTALL_LIBDIR}
+        -DLIBROBOT_EXECUTABLE_SUFFIX=${CMAKE_EXECUTABLE_SUFFIX}
+        -DLIBROBOT_QT6_DIR=${Qt6_DIR}
+        -DLIBROBOT_QT_RUNTIME_DIR=${LIBROBOT_QT_RUNTIME_DIR}
+        -DLIBROBOT_OPENCV_DIR=${OpenCV_DIR}
+        -DLIBROBOT_OPENCV_RUNTIME_DIR=${librobot_consumer_opencv_runtime_dir}
+        -DLIBROBOT_FORBIDDEN_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+        -DLIBROBOT_AMCL_SOURCE_DIR=${FETCHCONTENT_SOURCE_DIR_AMCL}
+        -P ${PROJECT_SOURCE_DIR}/cmake/VerifyInstalledConsumer.cmake
+)
+set_tests_properties(librobot.consumer PROPERTIES TIMEOUT 180)

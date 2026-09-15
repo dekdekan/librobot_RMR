@@ -72,6 +72,16 @@ if(BUILD_TESTING AND (PROJECT_IS_TOP_LEVEL OR LIBROBOT_BUILD_TESTING))
 endif()
 
 include(CMakePackageConfigHelpers)
+if(LIBROBOT_ENABLE_AMCL)
+    set(LIBROBOT_AMCL_ENABLED_LITERAL TRUE)
+else()
+    set(LIBROBOT_AMCL_ENABLED_LITERAL FALSE)
+endif()
+if(LIBROBOT_ENABLE_OPENCV)
+    set(LIBROBOT_OPENCV_ENABLED_LITERAL TRUE)
+else()
+    set(LIBROBOT_OPENCV_ENABLED_LITERAL FALSE)
+endif()
 configure_package_config_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/librobotConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/librobotConfig.cmake
