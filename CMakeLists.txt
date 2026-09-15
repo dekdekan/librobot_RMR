@@ -105,3 +105,7 @@ install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/librobotConfigVersion.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/librobot
 )
+
+if(PROJECT_IS_TOP_LEVEL)
+    include(cmake/Packaging.cmake)
+endif()
