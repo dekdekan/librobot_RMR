@@ -18,13 +18,6 @@ if(LIBROBOT_ENABLE_AMCL)
     )
     add_test(NAME librobot.amcl_integration COMMAND librobot_amcl_integration_test)
     set_tests_properties(librobot.amcl_integration PROPERTIES TIMEOUT 60)
-    if(WIN32)
-        string(REPLACE ";" "\\;" librobot_test_path "$ENV{PATH}")
-        set_tests_properties(librobot.amcl_integration PROPERTIES
-            ENVIRONMENT
-                "PATH=$<TARGET_FILE_DIR:librobot>\\;${LIBROBOT_QT_RUNTIME_DIR}\\;${librobot_test_path}"
-        )
-    endif()
 else()
     add_library(librobot_amcl_feature_off_probe OBJECT amcl_feature_off_probe.cpp)
     target_link_libraries(librobot_amcl_feature_off_probe PRIVATE librobot::librobot)
@@ -33,10 +26,18 @@ endif()
 if(LIBROBOT_ENABLE_OPENCV)
     add_library(librobot_opencv_feature_probe OBJECT opencv_feature_probe.cpp)
     target_link_libraries(librobot_opencv_feature_probe PRIVATE librobot::librobot)
+
+    add_executable(librobot_opencv_api_test opencv_api_test.cpp)
+    target_link_libraries(librobot_opencv_api_test PRIVATE librobot::librobot)
+    add_test(NAME librobot.opencv_api COMMAND librobot_opencv_api_test)
 else()
     add_library(librobot_opencv_feature_off_probe OBJECT opencv_feature_off_probe.cpp)
     target_link_libraries(librobot_opencv_feature_off_probe PRIVATE librobot::librobot)
 endif()
+
+add_executable(librobot_runtime_lifecycle_test runtime_lifecycle_test.cpp)
+target_link_libraries(librobot_runtime_lifecycle_test PRIVATE librobot::librobot)
+add_test(NAME librobot.runtime_lifecycle COMMAND librobot_runtime_lifecycle_test)
 
 add_executable(librobot_grid_map_defaults_test grid_map_defaults_test.cpp)
 target_link_libraries(librobot_grid_map_defaults_test PRIVATE librobot::librobot)
@@ -79,3 +80,27 @@ add_test(
     NAME librobot.parent_subproject_configure
     COMMAND ${CMAKE_COMMAND} ${librobot_parent_subproject_arguments}
 )
+
+if(WIN32)
+    string(REPLACE ";" "\\;" librobot_test_path "$ENV{PATH}")
+    set(librobot_test_runtime_path
+        "$<TARGET_FILE_DIR:librobot>\\;${LIBROBOT_QT_RUNTIME_DIR}")
+    if(LIBROBOT_ENABLE_OPENCV)
+        get_filename_component(librobot_test_opencv_runtime_dir
+            "${OpenCV_DIR}/../bin" ABSOLUTE)
+        string(APPEND librobot_test_runtime_path
+            "\\;${librobot_test_opencv_runtime_dir}")
+    endif()
+    string(APPEND librobot_test_runtime_path "\\;${librobot_test_path}")
+
+    set(librobot_runtime_tests librobot.runtime_lifecycle)
+    if(LIBROBOT_ENABLE_AMCL)
+        list(APPEND librobot_runtime_tests librobot.amcl_integration)
+    endif()
+    if(LIBROBOT_ENABLE_OPENCV)
+        list(APPEND librobot_runtime_tests librobot.opencv_api)
+    endif()
+    set_tests_properties(${librobot_runtime_tests} PROPERTIES
+        ENVIRONMENT "PATH=${librobot_test_runtime_path}"
+    )
+endif()

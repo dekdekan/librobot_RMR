@@ -18,19 +18,17 @@
 #endif
 // #include <winsock2.h>
 #include <stdio.h>
+#include <cstdint>
 #include <stdlib.h>
 // #include "unistd.h"
 // #include "thread.h"
 #include "fcntl.h"
-#include "iostream"
 #include "string.h"
 #include <errno.h>
 
 // #include <termios.h>
 // #include <unistd.h>
 #include <stdio.h>
-
-#include <iostream>
 
 // #include<unistd.h>
 //

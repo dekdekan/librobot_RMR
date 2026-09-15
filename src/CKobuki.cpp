@@ -2,7 +2,6 @@
 // #include "termios.h"
 #include "errno.h"
 #include <cstddef>
-#include <iostream>
 
 int CKobuki::checkChecksum(unsigned char *data) { // najprv hlavicku
   unsigned char chckSum = 0;
@@ -23,7 +22,6 @@ std::vector<unsigned char> CKobuki::setLed(int led1, int led2) {
       static_cast<unsigned char>((led1 + led2 * 4) % 256),
       0x00};
   message[7] = message[2] ^ message[3] ^ message[4] ^ message[5] ^ message[6];
-  uint32_t pocet;
   std::vector<unsigned char> vystup(message, message + sizeof(message) /
                                                            sizeof(message[0]));
   return vystup;
@@ -48,7 +46,6 @@ std::vector<unsigned char> CKobuki::setTranslationSpeed(int mmpersec) {
                 message[7] ^ message[8] ^ message[9] ^ message[10] ^
                 message[11] ^ message[12];
 
-  uint32_t pocet;
   std::vector<unsigned char> vystup(message, message + sizeof(message) /
                                                            sizeof(message[0]));
   return vystup;
@@ -74,7 +71,6 @@ std::vector<unsigned char> CKobuki::setRotationSpeed(double radpersec) {
                 message[7] ^ message[8] ^ message[9] ^ message[10] ^
                 message[11] ^ message[12];
 
-  uint32_t pocet;
   std::vector<unsigned char> vystup(message, message + sizeof(message) /
                                                            sizeof(message[0]));
   return vystup;
@@ -107,7 +103,6 @@ std::vector<unsigned char> CKobuki::setArcSpeed(int mmpersec, int radius) {
   message[13] = message[2] ^ message[3] ^ message[4] ^ message[5] ^ message[6] ^
                 message[7] ^ message[8] ^ message[9] ^ message[10] ^
                 message[11] ^ message[12];
-  uint32_t pocet;
   std::vector<unsigned char> vystup(message, message + sizeof(message) /
                                                            sizeof(message[0]));
   return vystup;
@@ -138,7 +133,6 @@ std::vector<unsigned char> CKobuki::setSound(int noteinHz, int duration) {
                 message[7] ^ message[8] ^ message[9] ^ message[10] ^
                 message[11];
 
-  uint32_t pocet;
   std::vector<unsigned char> vystup(message, message + sizeof(message) /
                                                            sizeof(message[0]));
   return vystup;

@@ -17,7 +17,13 @@ if(LIBROBOT_DISABLE_OPENCV)
 endif()
 
 if(LIBROBOT_ENABLE_OPENCV)
-    find_package(OpenCV REQUIRED)
+    find_package(OpenCV 4 REQUIRED COMPONENTS
+        core
+        highgui
+        imgcodecs
+        imgproc
+        videoio
+    )
 endif()
 
 include(CTest)

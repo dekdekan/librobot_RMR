@@ -38,6 +38,7 @@ endif()
 
 if(LIBROBOT_ENABLE_OPENCV)
     target_compile_definitions(librobot PUBLIC LIBROBOT_HAS_OPENCV=1)
+    target_include_directories(librobot PUBLIC ${OpenCV_INCLUDE_DIRS})
     target_link_libraries(librobot PUBLIC ${OpenCV_LIBS})
 else()
     target_compile_definitions(librobot PUBLIC DISABLE_OPENCV)
