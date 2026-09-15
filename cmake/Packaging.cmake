@@ -5,11 +5,99 @@ set(CPACK_PACKAGE_VENDOR "librobot")
 set(CPACK_PACKAGE_CONTACT "librobot maintainers")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "librobot runtime and CMake development package")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(_librobot_package_system_name win64)
+elseif(WIN32)
+    set(_librobot_package_system_name win32)
+else()
+    set(_librobot_package_system_name "${CMAKE_SYSTEM_NAME}")
+endif()
+set(CPACK_PACKAGE_FILE_NAME
+    "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${_librobot_package_system_name}")
+set(_librobot_binary_package_file_name "${CPACK_PACKAGE_FILE_NAME}")
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
 set(CPACK_PACKAGE_DIRECTORY "${CMAKE_BINARY_DIR}/packages")
 set(CPACK_VERBATIM_VARIABLES ON)
 
 if(WIN32)
+    set(_librobot_nsis_module_directory
+        "${CMAKE_BINARY_DIR}/librobot-cpack-modules")
+    set(_librobot_nsis_template
+        "${_librobot_nsis_module_directory}/NSIS.template.in")
+    file(MAKE_DIRECTORY "${_librobot_nsis_module_directory}")
+    set(_librobot_stock_nsis_template
+        "${CMAKE_ROOT}/Modules/Internal/CPack/NSIS.template.in")
+    if(NOT EXISTS "${_librobot_stock_nsis_template}")
+        set(_librobot_stock_nsis_template
+            "${CMAKE_ROOT}/Modules/NSIS.template.in")
+    endif()
+    if(NOT EXISTS "${_librobot_stock_nsis_template}")
+        message(FATAL_ERROR "Could not locate CPack's NSIS.template.in")
+    endif()
+    file(READ "${_librobot_stock_nsis_template}"
+        _librobot_nsis_template_contents)
+    string(REPLACE "\r\n" "\n" _librobot_nsis_template_contents
+        "${_librobot_nsis_template_contents}")
+
+    function(_librobot_replace_nsis_template original replacement expected_count description)
+        set(remaining "${_librobot_nsis_template_contents}")
+        set(actual_count 0)
+        while(TRUE)
+            string(FIND "${remaining}" "${original}" match_index)
+            if(match_index EQUAL -1)
+                break()
+            endif()
+            math(EXPR actual_count "${actual_count} + 1")
+            string(LENGTH "${original}" original_length)
+            math(EXPR next_index "${match_index} + ${original_length}")
+            string(SUBSTRING "${remaining}" ${next_index} -1 remaining)
+        endwhile()
+        if(NOT actual_count EQUAL expected_count)
+            message(FATAL_ERROR
+                "Cannot customize the CPack NSIS template: expected ${expected_count} "
+                "${description} fragment(s), found ${actual_count}")
+        endif()
+        string(REPLACE "${original}" "${replacement}"
+            _librobot_nsis_template_contents
+            "${_librobot_nsis_template_contents}")
+        set(_librobot_nsis_template_contents
+            "${_librobot_nsis_template_contents}" PARENT_SCOPE)
+    endfunction()
+
+    _librobot_replace_nsis_template(
+        "RequestExecutionLevel admin" "RequestExecutionLevel user" 1
+        "execution-level")
+    _librobot_replace_nsis_template(
+        "SetShellVarContext all" "SetShellVarContext current" 4
+        "shell-context")
+    _librobot_replace_nsis_template(
+        [=[ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "UninstallString"]=]
+        [=[ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "UninstallString"]=]
+        1 "upgrade-uninstaller registry")
+    _librobot_replace_nsis_template(
+        [=[ReadRegStr $1 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "DisplayName"]=]
+        [=[ReadRegStr $1 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "DisplayName"]=]
+        1 "upgrade-display-name registry")
+    _librobot_replace_nsis_template(
+        [=[HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@\Components\${SecName}"]=]
+        [=[HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@\Components\${SecName}"]=]
+        3 "component registry")
+    _librobot_replace_nsis_template(
+        [=[StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"]=]
+        [=[StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"]=]
+        1 "current-user install-directory")
+    _librobot_replace_nsis_template(
+        "  noOptionsPage:\nFunctionEnd"
+        "  noOptionsPage:\n  SetShellVarContext current\n  StrCpy $SV_ALLUSERS \"JustMe\"\n  StrCpy $INSTDIR \"$LOCALAPPDATA\\@CPACK_PACKAGE_INSTALL_DIRECTORY@\"\nFunctionEnd"
+        1 "installer final current-user scope")
+    _librobot_replace_nsis_template(
+        "Function un.onInit\n\n  ClearErrors"
+        "Function un.onInit\n\n  SetShellVarContext current\n  ClearErrors"
+        1 "uninstaller current-user scope")
+    file(WRITE "${_librobot_nsis_template}"
+        "${_librobot_nsis_template_contents}")
+    list(PREPEND CPACK_MODULE_PATH "${_librobot_nsis_module_directory}")
+
     # CPack installs Release normally.  Stage Debug first so the installer and
     # ZIP expose both MSVC runtime/import-library mappings from one package.
     set(LIBROBOT_CPACK_DEBUG_BUILD_DIR "${CMAKE_BINARY_DIR}" CACHE PATH
@@ -59,15 +147,93 @@ else()
     set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${CPACK_PACKAGE_CONTACT}")
+    set(CPACK_DEBIAN_FILE_NAME "${CPACK_PACKAGE_FILE_NAME}.deb")
 endif()
 
 include(CPack)
 
-if(BUILD_TESTING AND WIN32)
-    add_test(
-        NAME package.layout
-        COMMAND "${CMAKE_COMMAND}"
-            "-DLIBROBOT_PACKAGE_DIRECTORY=${CPACK_PACKAGE_DIRECTORY}"
-            -P "${PROJECT_SOURCE_DIR}/tests/packaging/verify_layout.cmake"
-    )
+if(BUILD_TESTING)
+    set(_librobot_package_test_directory
+        "${PROJECT_SOURCE_DIR}/tests/packaging")
+
+    function(_librobot_add_package_layout_test
+            test_name generator extension format layout_prefix
+            require_bin require_windows_configs require_macos_scripts)
+        string(TOLOWER "${generator}" generator_lower)
+        add_test(
+            NAME "${test_name}"
+            COMMAND "${CMAKE_COMMAND}"
+                "-DLIBROBOT_CPACK_COMMAND=${CMAKE_CPACK_COMMAND}"
+                "-DLIBROBOT_CPACK_CONFIG=${CPACK_OUTPUT_CONFIG_FILE}"
+                "-DLIBROBOT_PACKAGE_GENERATOR=${generator}"
+                "-DLIBROBOT_PACKAGE_FILE=${CPACK_PACKAGE_DIRECTORY}/${_librobot_binary_package_file_name}${extension}"
+                "-DLIBROBOT_EXTRACT_DIRECTORY=${CMAKE_BINARY_DIR}/package-layout-${generator_lower}"
+                "-DLIBROBOT_PACKAGE_FORMAT=${format}"
+                "-DLIBROBOT_LAYOUT_PREFIX=${layout_prefix}"
+                "-DLIBROBOT_REQUIRE_BIN=${require_bin}"
+                "-DLIBROBOT_REQUIRE_WINDOWS_CONFIGS=${require_windows_configs}"
+                "-DLIBROBOT_REQUIRE_MACOS_SCRIPTS=${require_macos_scripts}"
+                "-DLIBROBOT_DPKG_DEB=${_librobot_dpkg_deb}"
+                -DLIBROBOT_VERIFY_LAYOUT=TRUE
+                "-DLIBROBOT_VERIFY_SCRIPT=${_librobot_package_test_directory}/verify_layout.cmake"
+                -P "${_librobot_package_test_directory}/generate_and_verify.cmake")
+    endfunction()
+
+    if(WIN32)
+        _librobot_add_package_layout_test(
+            package.layout.zip ZIP .zip ARCHIVE "" TRUE TRUE FALSE)
+        add_test(
+            NAME package.nsis_template
+            COMMAND "${CMAKE_COMMAND}"
+                "-DLIBROBOT_NSIS_TEMPLATE=${_librobot_nsis_template}"
+                "-DLIBROBOT_NSIS_TEST_DIRECTORY=${CMAKE_BINARY_DIR}/package-nsis-template"
+                -P "${_librobot_package_test_directory}/verify_nsis_template.cmake")
+
+        find_program(_librobot_makensis makensis)
+        if(_librobot_makensis)
+            add_test(
+                NAME package.generate.nsis
+                COMMAND "${CMAKE_COMMAND}"
+                    "-DLIBROBOT_CPACK_COMMAND=${CMAKE_CPACK_COMMAND}"
+                    "-DLIBROBOT_CPACK_CONFIG=${CPACK_OUTPUT_CONFIG_FILE}"
+                    -DLIBROBOT_PACKAGE_GENERATOR=NSIS
+                    "-DLIBROBOT_PACKAGE_FILE=${CPACK_PACKAGE_DIRECTORY}/${_librobot_binary_package_file_name}.exe"
+                    "-DLIBROBOT_EXTRACT_DIRECTORY=${CMAKE_BINARY_DIR}/package-layout-nsis"
+                    -DLIBROBOT_VERIFY_LAYOUT=FALSE
+                    -P "${_librobot_package_test_directory}/generate_and_verify.cmake")
+        endif()
+    elseif(APPLE)
+        _librobot_add_package_layout_test(
+            package.layout.tgz TGZ .tar.gz ARCHIVE "" FALSE FALSE TRUE)
+    else()
+        find_program(_librobot_dpkg_deb dpkg-deb)
+        _librobot_add_package_layout_test(
+            package.layout.tgz TGZ .tar.gz ARCHIVE usr FALSE FALSE FALSE)
+        _librobot_add_package_layout_test(
+            package.layout.deb DEB .deb DEB usr FALSE FALSE FALSE)
+    endif()
+
+    foreach(rejection_case IN ITEMS amcl-versioned opencv-versioned qt-versioned private-header)
+        if(rejection_case STREQUAL "amcl-versioned")
+            set(forbidden_path "lib/libamcl.so.1")
+            set(expected_error "separate AMCL library")
+        elseif(rejection_case STREQUAL "opencv-versioned")
+            set(forbidden_path "lib/libopencv_core.so.4.10")
+            set(expected_error "Qt/OpenCV library")
+        elseif(rejection_case STREQUAL "qt-versioned")
+            set(forbidden_path "lib/libQt6Core.so.6")
+            set(expected_error "Qt/OpenCV library")
+        else()
+            set(forbidden_path "include/librobot/private/pf.h")
+            set(expected_error "non-public header")
+        endif()
+        add_test(
+            NAME "package.reject.${rejection_case}"
+            COMMAND "${CMAKE_COMMAND}"
+                "-DLIBROBOT_TEST_DIRECTORY=${CMAKE_BINARY_DIR}/package-reject-${rejection_case}"
+                "-DLIBROBOT_FORBIDDEN_PATH=${forbidden_path}"
+                "-DLIBROBOT_EXPECTED_ERROR=${expected_error}"
+                "-DLIBROBOT_VERIFY_SCRIPT=${_librobot_package_test_directory}/verify_layout.cmake"
+                -P "${_librobot_package_test_directory}/verify_rejection.cmake")
+    endforeach()
 endif()
