@@ -20,10 +20,47 @@ if(LIBROBOT_ENABLE_OPENCV)
     find_package(OpenCV REQUIRED)
 endif()
 
+include(CTest)
+
+if(LIBROBOT_ENABLE_AMCL)
+    include(FetchContent)
+
+    # AMCL release v1.0.0 resolves to this immutable revision.
+    set(LIBROBOT_AMCL_GIT_REVISION
+        "dc39c300ec2bb60cae13603a5cae460e325f6c26"
+        CACHE STRING "Immutable AMCL source revision")
+    FetchContent_Declare(amcl
+        GIT_REPOSITORY git@github.com:dekdekan/amcl.git
+        GIT_TAG "${LIBROBOT_AMCL_GIT_REVISION}"
+        GIT_SHALLOW FALSE
+    )
+
+    set(_librobot_saved_build_shared_libs "${BUILD_SHARED_LIBS}")
+    set(_librobot_saved_build_testing "${BUILD_TESTING}")
+    set(BUILD_SHARED_LIBS OFF)
+    set(BUILD_TESTING OFF)
+
+    FetchContent_GetProperties(amcl)
+    if(NOT amcl_POPULATED)
+        if(POLICY CMP0169)
+            cmake_policy(PUSH)
+            cmake_policy(SET CMP0169 OLD)
+        endif()
+        FetchContent_Populate(amcl)
+        if(POLICY CMP0169)
+            cmake_policy(POP)
+        endif()
+        add_subdirectory("${amcl_SOURCE_DIR}" "${amcl_BINARY_DIR}" EXCLUDE_FROM_ALL)
+    endif()
+
+    set(BUILD_SHARED_LIBS "${_librobot_saved_build_shared_libs}")
+    set(BUILD_TESTING "${_librobot_saved_build_testing}")
+    set_target_properties(amcl PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif()
+
 include(GNUInstallDirs)
 add_subdirectory(src)
 
-include(CTest)
 if(BUILD_TESTING AND (PROJECT_IS_TOP_LEVEL OR LIBROBOT_BUILD_TESTING))
     add_subdirectory(tests)
 endif()

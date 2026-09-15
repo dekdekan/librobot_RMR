@@ -35,6 +35,13 @@
 #include <utility>
 
 #include "skeleton.h"
+
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+namespace librobot_detail {
+class AMCLAdapter;
+}
+#endif
+
 class ROBOT_EXPORT libRobot {
 public:
   ~libRobot();
@@ -150,6 +157,14 @@ private:
   std::thread robotthreadHandle;
   void robotprocess();
   std::function<int(const TKobukiData &)> robot_callback = nullptr;
+
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+  std::unique_ptr<librobot_detail::AMCLAdapter> amclAdapter_;
+  std::mutex lifecycleMutex_;
+  bool robotStarted_{false};
+  bool amclConfigurationRequested_{false};
+  bool amclConfigurationFailed_{false};
+#endif
 
   udp_communication laserCom;
   udp_communication robotCom;

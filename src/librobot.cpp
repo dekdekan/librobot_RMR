@@ -1,4 +1,7 @@
 #include "librobot/librobot.h"
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+#include "amcl_adapter.h"
+#endif
 #include <QThread>
 
 libRobot::~libRobot() {
@@ -26,7 +29,11 @@ libRobot::libRobot(
     std::function<int(const TKobukiData &)> &robcallback,
     std::string ipaddressLaser, int laserportRobot, int laserportMe,
     std::string ipaddressRobot, int robotportRobot, int robotportMe)
-    : wasLaserSet(0), wasRobotSet(0), wasCameraSet(0), wasSkeletonSet(0) {
+    : wasLaserSet(0), wasRobotSet(0), wasCameraSet(0), wasSkeletonSet(0)
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+      , amclAdapter_(std::make_unique<librobot_detail::AMCLAdapter>())
+#endif
+{
 
   setLaserParameters(lascallback, ipaddressLaser, laserportRobot, laserportMe);
   setRobotParameters(robcallback, ipaddressRobot, robotportRobot, robotportMe);
@@ -65,6 +72,11 @@ void libRobot::robotprocess() {
     //   "<<sens.EncoderLeft<<std::endl;
     if (returnval == 0) {
       //     memcpy(&sens,buff,sizeof(sens));
+
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+      amclAdapter_->updateOdometry(sens.EncoderLeft, sens.EncoderRight,
+                                   tickToMeter, b);
+#endif
 
       std::chrono::steady_clock::time_point timestampf =
           std::chrono::steady_clock::now();
@@ -129,6 +141,10 @@ void libRobot::laserprocess() {
     std::copy(measure.Data, measure.Data + measure.numberOfScans, data.begin());
     // tu mame data..zavolame si funkciu-- vami definovany callback
 
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+    amclAdapter_->processScan(data);
+#endif
+
     
     std::async(
         std::launch::async,
@@ -143,6 +159,19 @@ void libRobot::laserprocess() {
 }
 
 void libRobot::robotStart() {
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+  {
+    std::lock_guard lock{lifecycleMutex_};
+    if (robotStarted_) {
+      return;
+    }
+    robotStarted_ = true;
+    amclAdapter_->markStarted();
+    if (amclConfigurationRequested_ && amclConfigurationFailed_) {
+      return;
+    }
+  }
+#endif
   if (wasRobotSet == 1) {
     std::function<void(void)> f = std::bind(&libRobot::robotprocess, this);
     robotthreadHandle = std::move(std::thread(f));
@@ -164,6 +193,48 @@ void libRobot::robotStart() {
   }
 #endif
 }
+
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+bool libRobot::setAMCLParameters(const std::filesystem::path &mapPath,
+                                 int particleCount, double rotationStd,
+                                 double translationStd, AMCLCallback callback,
+                                 std::string *errorMessage) {
+  std::lock_guard lock{lifecycleMutex_};
+  if (errorMessage != nullptr) {
+    errorMessage->clear();
+  }
+  if (robotStarted_) {
+    if (errorMessage != nullptr) {
+      *errorMessage = "AMCL cannot be configured after robotStart().";
+    }
+    return false;
+  }
+  if (amclConfigurationRequested_ && !amclConfigurationFailed_) {
+    if (errorMessage != nullptr) {
+      *errorMessage = "AMCL has already been configured.";
+    }
+    return false;
+  }
+
+  amclConfigurationRequested_ = true;
+  const bool configured =
+      amclAdapter_->configure(mapPath, particleCount, rotationStd,
+                              translationStd, std::move(callback), errorMessage);
+  amclConfigurationFailed_ = !configured;
+  return configured;
+}
+
+Particle libRobot::getBestParticle() const {
+  return amclAdapter_->bestParticle();
+}
+
+const GridMap &libRobot::getAmclMap() const { return amclAdapter_->map(); }
+
+void libRobot::getGridCoordinates(double realX, double realY, int &gridX,
+                                  int &gridY) const {
+  amclAdapter_->worldToGrid(realX, realY, gridX, gridY);
+}
+#endif
 
 #ifndef DISABLE_OPENCV
 void libRobot::imageViewer() {

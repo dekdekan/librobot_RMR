@@ -25,7 +25,9 @@ target_compile_definitions(librobot PRIVATE
 )
 
 if(LIBROBOT_ENABLE_AMCL)
+    target_sources(librobot PRIVATE amcl_adapter.cpp)
     target_compile_definitions(librobot PUBLIC LIBROBOT_HAS_AMCL=1)
+    target_link_libraries(librobot PRIVATE amcl::amcl)
 else()
     target_compile_definitions(librobot PUBLIC DISABLE_AMCL)
 endif()
@@ -43,6 +45,18 @@ endif()
 
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Network)
+
+if(WIN32 AND BUILD_TESTING)
+    get_target_property(_librobot_qt_core_location
+        Qt6::Core IMPORTED_LOCATION_DEBUG)
+    if(NOT _librobot_qt_core_location)
+        get_target_property(_librobot_qt_core_location
+            Qt6::Core IMPORTED_LOCATION_RELEASE)
+    endif()
+    get_filename_component(_librobot_qt_runtime_dir
+        "${_librobot_qt_core_location}" DIRECTORY)
+    set(LIBROBOT_QT_RUNTIME_DIR "${_librobot_qt_runtime_dir}" PARENT_SCOPE)
+endif()
 
 target_link_libraries(librobot PUBLIC Qt6::Core Qt6::Network) 
 
