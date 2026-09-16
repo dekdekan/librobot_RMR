@@ -80,8 +80,12 @@ jobs:
           if ($actual -ne '5f266a8b73bed535962d7e861a6457e32a0dd5f463ad0a7cf8707a135469be63') {
             throw "OpenCV 4.14.0 SHA256 mismatch"
           }
-          & $asset -y -d (Join-Path $PWD 'opencv-dist')
-          if ($LASTEXITCODE -ne 0) { throw "OpenCV extraction failed: $LASTEXITCODE" }
+          $extractRoot = Join-Path $PWD 'opencv-dist'
+          $extractor = Start-Process -FilePath $asset `
+            -ArgumentList @('-y', '-d', $extractRoot) -Wait -PassThru
+          if ($extractor.ExitCode -ne 0) {
+            throw "OpenCV extraction failed: $($extractor.ExitCode)"
+          }
           $opencvDir = Join-Path $PWD 'opencv-dist/opencv/build/x64/vc17/lib'
           if (-not (Test-Path -LiteralPath (Join-Path $opencvDir 'OpenCVConfig.cmake'))) {
             throw "Official OpenCV MSVC x64 package layout changed"
@@ -105,8 +109,9 @@ jobs:
           set -euo pipefail
           test "$(uname -m)" = arm64
           brew install opencv ninja
-          echo "OpenCV_DIR=$(brew --prefix opencv)/lib/cmake/opencv4" >> "$GITHUB_ENV"
-          pkg-config --modversion opencv4
+          opencv_dir="$(brew --prefix opencv)/lib/cmake/opencv4"
+          test -f "$opencv_dir/OpenCVConfig.cmake"
+          echo "OpenCV_DIR=$opencv_dir" >> "$GITHUB_ENV"
 
       - name: Configure public Windows build
         if: matrix.os == 'windows'
@@ -196,8 +201,12 @@ jobs:
           if ($actual -ne '5f266a8b73bed535962d7e861a6457e32a0dd5f463ad0a7cf8707a135469be63') {
             throw "OpenCV 4.14.0 SHA256 mismatch"
           }
-          & $asset -y -d (Join-Path $PWD 'opencv-dist')
-          if ($LASTEXITCODE -ne 0) { throw "OpenCV extraction failed: $LASTEXITCODE" }
+          $extractRoot = Join-Path $PWD 'opencv-dist'
+          $extractor = Start-Process -FilePath $asset `
+            -ArgumentList @('-y', '-d', $extractRoot) -Wait -PassThru
+          if ($extractor.ExitCode -ne 0) {
+            throw "OpenCV extraction failed: $($extractor.ExitCode)"
+          }
           $opencvDir = Join-Path $PWD 'opencv-dist/opencv/build/x64/vc17/lib'
           if (-not (Test-Path -LiteralPath (Join-Path $opencvDir 'OpenCVConfig.cmake'))) {
             throw "Official OpenCV MSVC x64 package layout changed"
@@ -221,8 +230,9 @@ jobs:
           set -euo pipefail
           test "$(uname -m)" = arm64
           brew install opencv ninja
-          echo "OpenCV_DIR=$(brew --prefix opencv)/lib/cmake/opencv4" >> "$GITHUB_ENV"
-          pkg-config --modversion opencv4
+          opencv_dir="$(brew --prefix opencv)/lib/cmake/opencv4"
+          test -f "$opencv_dir/OpenCVConfig.cmake"
+          echo "OpenCV_DIR=$opencv_dir" >> "$GITHUB_ENV"
 
       - name: Check out pinned private AMCL after dependency setup
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
