@@ -382,7 +382,12 @@ jobs:
           Copy-Item -LiteralPath $installer, $archive -Destination release-assets
           foreach ($artifact in Get-ChildItem -LiteralPath release-assets -File) {
             $hash = (Get-FileHash -LiteralPath $artifact.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-            "$hash  $($artifact.Name)" | Set-Content -LiteralPath "$($artifact.FullName).sha256" -Encoding ascii
+            $line = "$hash  $($artifact.Name)"
+            [System.IO.File]::WriteAllText(
+              "$($artifact.FullName).sha256",
+              "$line`n",
+              [System.Text.UTF8Encoding]::new($false)
+            )
           }
 
       - name: Generate and validate Ubuntu DEB and TGZ packages
