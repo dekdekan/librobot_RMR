@@ -105,8 +105,9 @@ jobs:
           set -euo pipefail
           test "$(uname -m)" = arm64
           brew install opencv ninja
-          opencv_dir="$(brew --prefix opencv)/lib/cmake/opencv4"
-          test -f "$opencv_dir/OpenCVConfig.cmake"
+          opencv_config="$(find "$(brew --prefix opencv)" -type f -name OpenCVConfig.cmake -print -quit)"
+          test -n "$opencv_config"
+          opencv_dir="$(dirname "$opencv_config")"
           echo "OpenCV_DIR=$opencv_dir" >> "$GITHUB_ENV"
 
       - name: Check out pinned private AMCL after dependency setup
@@ -212,7 +213,7 @@ jobs:
             echo 'Architecture=x86_64'
             echo "Compiler=GCC $(c++ -dumpfullversion -dumpversion)"
             echo "Qt=$($qt_tool -query QT_VERSION)"
-            echo "OpenCV=$(brew list --versions opencv | awk '{print $2}')"
+            echo "OpenCV=$(pkg-config --modversion opencv4)"
           } > build-manifest.txt
 
       - name: Record exact macOS build manifest
@@ -226,7 +227,7 @@ jobs:
             echo 'Architecture=arm64'
             echo "Compiler=AppleClang $(xcrun clang++ --version | head -n 1)"
             echo "Qt=$($qt_tool -query QT_VERSION)"
-            echo "OpenCV=$(pkg-config --modversion opencv4)"
+            echo "OpenCV=$(brew list --versions opencv | awk '{print $2}')"
           } > build-manifest.txt
 
       - name: Build Windows Debug and Release
@@ -518,7 +519,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -Dlibrobot_DIR=/usr/local/lib/cmake/librobot \
             -DQt6_DIR="$QT_ROOT_DIR/lib/cmake/Qt6" \
-            -DOpenCV_DIR="$(brew --prefix opencv)/lib/cmake/opencv4" \
+            -DOpenCV_DIR="$OpenCV_DIR" \
             -DLIBROBOT_CONSUMER_EXPECT_AMCL=ON \
             -DLIBROBOT_CONSUMER_EXPECT_OPENCV=ON
           cmake --build consumer-macos --parallel 2

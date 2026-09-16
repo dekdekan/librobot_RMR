@@ -113,8 +113,9 @@ jobs:
           set -euo pipefail
           test "$(uname -m)" = arm64
           brew install opencv ninja
-          opencv_dir="$(brew --prefix opencv)/lib/cmake/opencv4"
-          test -f "$opencv_dir/OpenCVConfig.cmake"
+          opencv_config="$(find "$(brew --prefix opencv)" -type f -name OpenCVConfig.cmake -print -quit)"
+          test -n "$opencv_config"
+          opencv_dir="$(dirname "$opencv_config")"
           echo "OpenCV_DIR=$opencv_dir" >> "$GITHUB_ENV"
 
       - name: Configure public Windows build
@@ -140,7 +141,18 @@ jobs:
       - name: Build public configuration
         run: cmake --build build --config ${{ matrix.build_type }} --parallel 2
 
+      - name: Build Windows Debug packaging prerequisite
+        if: matrix.os == 'windows' && matrix.build_type == 'Release'
+        run: cmake --build build --config Debug --parallel 2
+
+      - name: Test public Windows Debug configuration without packaging
+        if: matrix.os == 'windows' && matrix.build_type == 'Debug'
+        run: >
+          ctest --test-dir build -C Debug --output-on-failure
+          -E '^(package\.layout\.zip|package\.generate\.nsis)$'
+
       - name: Test public configuration without hardware
+        if: matrix.os != 'windows' || matrix.build_type != 'Debug'
         run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure
 
   trusted:
@@ -238,8 +250,9 @@ jobs:
           set -euo pipefail
           test "$(uname -m)" = arm64
           brew install opencv ninja
-          opencv_dir="$(brew --prefix opencv)/lib/cmake/opencv4"
-          test -f "$opencv_dir/OpenCVConfig.cmake"
+          opencv_config="$(find "$(brew --prefix opencv)" -type f -name OpenCVConfig.cmake -print -quit)"
+          test -n "$opencv_config"
+          opencv_dir="$(dirname "$opencv_config")"
           echo "OpenCV_DIR=$opencv_dir" >> "$GITHUB_ENV"
 
       - name: Check out pinned private AMCL after dependency setup
@@ -282,5 +295,16 @@ jobs:
       - name: Build trusted configuration
         run: cmake --build build --config ${{ matrix.build_type }} --parallel 2
 
+      - name: Build Windows Debug packaging prerequisite
+        if: matrix.os == 'windows' && matrix.build_type == 'Release'
+        run: cmake --build build --config Debug --parallel 2
+
+      - name: Test trusted Windows Debug configuration without packaging
+        if: matrix.os == 'windows' && matrix.build_type == 'Debug'
+        run: >
+          ctest --test-dir build -C Debug --output-on-failure
+          -E '^(package\.layout\.zip|package\.generate\.nsis)$'
+
       - name: Test trusted configuration without hardware
+        if: matrix.os != 'windows' || matrix.build_type != 'Debug'
         run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure

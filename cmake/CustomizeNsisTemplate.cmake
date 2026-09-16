@@ -4,7 +4,7 @@ function(_librobot_count_nsis_template_fragments
         contents fragment output_variable)
     set(remaining "${contents}")
     set(actual_count 0)
-    while(TRUE)
+    while(1)
         string(FIND "${remaining}" "${fragment}" match_index)
         if(match_index EQUAL -1)
             break()
