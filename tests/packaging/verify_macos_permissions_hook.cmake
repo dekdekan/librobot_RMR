@@ -24,7 +24,22 @@ endforeach()
 set(CPACK_TEMPORARY_INSTALL_DIRECTORY "${LIBROBOT_TEST_DIRECTORY}")
 include("${LIBROBOT_MACOS_PERMISSIONS_HOOK}")
 
-if(UNIX)
+if(APPLE)
+    foreach(script_name IN ITEMS install.sh uninstall.sh)
+        execute_process(
+            COMMAND /usr/bin/stat -f %A
+                "${LIBROBOT_TEST_DIRECTORY}/${script_name}"
+            RESULT_VARIABLE stat_result
+            OUTPUT_VARIABLE script_mode
+            ERROR_VARIABLE stat_error
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if(NOT stat_result EQUAL 0 OR NOT script_mode STREQUAL "755")
+            message(FATAL_ERROR
+                "The macOS permission hook set ${script_name} mode to "
+                "'${script_mode}', expected 755: ${stat_error}")
+        endif()
+    endforeach()
+elseif(UNIX)
     foreach(script_name IN ITEMS install.sh uninstall.sh)
         execute_process(
             COMMAND /usr/bin/test -x

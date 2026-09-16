@@ -68,13 +68,19 @@ endif()
 if(LIBROBOT_REQUIRE_MACOS_SCRIPTS)
     require_package_entry("install.sh")
     require_package_entry("uninstall.sh")
-    execute_process(COMMAND /usr/bin/test -x "${package_root}/install.sh"
-        RESULT_VARIABLE install_script_result)
-    execute_process(COMMAND /usr/bin/test -x "${package_root}/uninstall.sh"
-        RESULT_VARIABLE uninstall_script_result)
-    if(NOT install_script_result EQUAL 0 OR NOT uninstall_script_result EQUAL 0)
-        message(FATAL_ERROR "macOS package scripts are not executable")
-    endif()
+    foreach(script_name IN ITEMS install.sh uninstall.sh)
+        execute_process(
+            COMMAND /usr/bin/stat -f %A "${package_root}/${script_name}"
+            RESULT_VARIABLE stat_result
+            OUTPUT_VARIABLE script_mode
+            ERROR_VARIABLE stat_error
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if(NOT stat_result EQUAL 0 OR NOT script_mode STREQUAL "755")
+            message(FATAL_ERROR
+                "macOS package ${script_name} mode is '${script_mode}', "
+                "expected 755: ${stat_error}")
+        endif()
+    endforeach()
 endif()
 
 file(GLOB_RECURSE package_entries
