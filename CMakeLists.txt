@@ -61,7 +61,15 @@ if(LIBROBOT_ENABLE_AMCL)
 
     set(BUILD_SHARED_LIBS "${_librobot_saved_build_shared_libs}")
     set(BUILD_TESTING "${_librobot_saved_build_testing}")
-    set_target_properties(amcl PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    # AMCL is embedded implementation, not part of librobot's dynamic ABI.
+    # Compile every object from the static archive hidden so AppleClang does
+    # not re-export it when the archive is linked into the dylib.  GNU ld's
+    # archive localization below provides an additional ELF boundary.
+    set_target_properties(amcl PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+        CXX_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN YES
+    )
 endif()
 
 include(GNUInstallDirs)

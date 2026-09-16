@@ -76,6 +76,31 @@ add_test(
         -P ${CMAKE_CURRENT_SOURCE_DIR}/verify_generated_config.cmake
 )
 
+add_test(
+    NAME librobot.final_contracts
+    COMMAND ${CMAKE_COMMAND}
+        -DLIBROBOT_SOURCE_CMAKE=${PROJECT_SOURCE_DIR}/src/CMakeLists.txt
+        -DLIBROBOT_ROOT_CMAKE=${PROJECT_SOURCE_DIR}/CMakeLists.txt
+        -DLIBROBOT_README=${PROJECT_SOURCE_DIR}/README.md
+        -DLIBROBOT_RELEASE_WORKFLOW=${PROJECT_SOURCE_DIR}/.github/workflows/release.yml
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/verify_final_contracts.cmake
+)
+
+add_test(
+    NAME librobot.symbol_contract.accepts_public_abi
+    COMMAND ${CMAKE_COMMAND}
+        -DLIBROBOT_SYMBOL_DUMP_FILE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/public-symbols.txt
+        -P ${PROJECT_SOURCE_DIR}/cmake/VerifyExportedSymbols.cmake
+)
+add_test(
+    NAME librobot.symbol_contract.rejects_private_abi
+    COMMAND ${CMAKE_COMMAND}
+        -DLIBROBOT_SYMBOL_DUMP_FILE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/private-symbols.txt
+        -P ${PROJECT_SOURCE_DIR}/cmake/VerifyExportedSymbols.cmake
+)
+set_tests_properties(librobot.symbol_contract.rejects_private_abi PROPERTIES
+    WILL_FAIL TRUE)
+
 set(librobot_parent_subproject_arguments
         -S ${CMAKE_CURRENT_SOURCE_DIR}/parent-subproject
         -B ${CMAKE_CURRENT_BINARY_DIR}/parent-subproject
@@ -154,6 +179,9 @@ add_test(
         -DLIBROBOT_OPENCV_RUNTIME_DIR=${librobot_consumer_opencv_runtime_dir}
         -DLIBROBOT_FORBIDDEN_SOURCE_DIR=${PROJECT_SOURCE_DIR}
         -DLIBROBOT_AMCL_SOURCE_DIR=${FETCHCONTENT_SOURCE_DIR_AMCL}
+        -DLIBROBOT_NM=${CMAKE_NM}
+        -DLIBROBOT_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
+        -DLIBROBOT_SYMBOL_VERIFY_SCRIPT=${PROJECT_SOURCE_DIR}/cmake/VerifyExportedSymbols.cmake
         -P ${PROJECT_SOURCE_DIR}/cmake/VerifyInstalledConsumer.cmake
 )
 set_tests_properties(librobot.consumer PROPERTIES TIMEOUT 180)

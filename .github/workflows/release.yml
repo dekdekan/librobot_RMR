@@ -412,6 +412,11 @@ jobs:
             test -f "$stage/usr/share/librobot/build-manifest.txt"
             cmp build-manifest.txt "$stage/usr/share/librobot/build-manifest.txt"
             file "$stage/usr/lib/liblibrobot.so.1.1.0" | grep -q 'x86-64'
+            cmake \
+              -DLIBROBOT_LIBRARY="$stage/usr/lib/liblibrobot.so.1.1.0" \
+              -DLIBROBOT_NM="$(command -v nm)" \
+              -DLIBROBOT_PLATFORM=Linux \
+              -P cmake/VerifyExportedSymbols.cmake
             if find "$stage" -type f \( -iname '*private-amcl*' -o -iname 'libamcl*' -o -iname 'libopencv*.so*' -o -iname 'libQt6*.so*' \) | grep -q .; then
               echo 'Ubuntu package contains private AMCL or a bundled dependency' >&2
               exit 1
@@ -420,15 +425,18 @@ jobs:
 
           test_installed_consumer() {
             build_dir=$1
+            export LIBROBOT_QT_ROOT="$QT_ROOT_DIR"
+            test -f "$LIBROBOT_QT_ROOT/lib/cmake/Qt6/Qt6Config.cmake"
+            test "$("$LIBROBOT_QT_ROOT/bin/qmake" -query QT_VERSION)" = 6.8.3
             cmake -S tests/consumer -B "$build_dir" -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
               -Dlibrobot_DIR=/usr/lib/cmake/librobot \
-              -DQt6_DIR="$QT_ROOT_DIR/lib/cmake/Qt6" \
+              -DQt6_DIR="$LIBROBOT_QT_ROOT/lib/cmake/Qt6" \
               -DLIBROBOT_CONSUMER_EXPECT_AMCL=ON \
               -DLIBROBOT_CONSUMER_EXPECT_OPENCV=ON
             cmake --build "$build_dir" --parallel 2
             test -x "$build_dir/librobot_consumer"
-            LD_LIBRARY_PATH="/usr/lib:$QT_ROOT_DIR/lib:${LD_LIBRARY_PATH:-}" \
+            LD_LIBRARY_PATH="$LIBROBOT_QT_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
               "$build_dir/librobot_consumer"
           }
 
@@ -479,6 +487,11 @@ jobs:
           test -f package-stage-tgz/share/librobot/build-manifest.txt
           cmp build-manifest.txt package-stage-tgz/share/librobot/build-manifest.txt
           file package-stage-tgz/lib/liblibrobot.1.1.0.dylib | grep -q arm64
+          cmake \
+            -DLIBROBOT_LIBRARY=package-stage-tgz/lib/liblibrobot.1.1.0.dylib \
+            -DLIBROBOT_NM="$(command -v nm)" \
+            -DLIBROBOT_PLATFORM=Darwin \
+            -P cmake/VerifyExportedSymbols.cmake
           if find package-stage-tgz -type f \( -iname '*private-amcl*' -o -iname 'libamcl*' -o -iname 'libopencv*.dylib' -o -iname 'libQt6*.dylib' \) | grep -q .; then
             echo 'macOS package contains private AMCL or a bundled dependency' >&2
             exit 1

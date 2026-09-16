@@ -28,15 +28,30 @@ For the portable ZIP, extract it to a stable directory, set `LIBROBOT_ROOT` to t
 
 ### Ubuntu 24.04, x64
 
-Install prerequisites and the Release DEB once:
+Ubuntu 24.04's `qt6-base-dev` is Qt 6.4 and does not satisfy librobot's Qt
+6.5 minimum. Install the Qt 6.8.3 Desktop `gcc_64` component with the
+[official Qt Online Installer](https://www.qt.io/download-qt-installer-oss) into
+its default `$HOME/Qt` location. Then install the system-provided OpenCV
+development package and the Release DEB once:
 
 ```sh
 sudo apt update
-sudo apt install qt6-base-dev libopencv-dev
+sudo apt install libgl1-mesa-dev libopencv-dev
+export LIBROBOT_QT_ROOT="$HOME/Qt/6.8.3/gcc_64"
+test -f "$LIBROBOT_QT_ROOT/lib/cmake/Qt6/Qt6Config.cmake"
+test "$("$LIBROBOT_QT_ROOT/bin/qmake" -query QT_VERSION)" = 6.8.3
 sudo apt install ./librobot-1.1.0-Linux.deb
 ```
 
-The DEB installs under `/usr`, so consumers can normally use `find_package(librobot REQUIRED)` without another hint. It is managed by the normal `apt`/`dpkg` package database. If a tool requires an explicit stable prefix, set `LIBROBOT_ROOT=/usr` for that tool. Uninstall with:
+Keep `LIBROBOT_QT_ROOT` in your shell profile. Pass
+`-DQt6_DIR="$LIBROBOT_QT_ROOT/lib/cmake/Qt6"` when configuring a consumer and
+run it with
+`LD_LIBRARY_PATH="$LIBROBOT_QT_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"`.
+This is the supported Ubuntu discovery/runtime path used by the release
+lifecycle test. The DEB installs librobot under `/usr`, so no librobot-specific
+CMake hint is normally needed. It is managed by the normal `apt`/`dpkg`
+package database. If a tool requires an explicit stable prefix, set
+`LIBROBOT_ROOT=/usr` for that tool. Uninstall with:
 
 ```sh
 sudo apt remove librobot
@@ -77,7 +92,20 @@ find_package(librobot 1.1 REQUIRED)
 target_link_libraries(my_application PRIVATE librobot::librobot)
 ```
 
-Do not set or mutate a global `CMAKE_PREFIX_PATH`. `LIBROBOT_ROOT` is the single persistent installation hint; the small prepend above is local to one configure operation.
+On Ubuntu, configure and run with the Qt root documented above:
+
+```sh
+cmake -S . -B build \
+  -DQt6_DIR="$LIBROBOT_QT_ROOT/lib/cmake/Qt6"
+cmake --build build
+LD_LIBRARY_PATH="$LIBROBOT_QT_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+  ./build/my_application
+```
+
+Do not set or mutate a global `CMAKE_PREFIX_PATH`. `LIBROBOT_ROOT` is the
+single persistent librobot installation hint; the small prepend above is local
+to one configure operation. The separate `LIBROBOT_QT_ROOT` points to the
+required Qt SDK on Ubuntu.
 
 ## Source builds and features
 
@@ -92,11 +120,25 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-The feature variables are:
+Source-build options are:
 
 - `LIBROBOT_ENABLE_AMCL` — defaults to `OFF`; public builds need no access to AMCL.
 - `LIBROBOT_ENABLE_OPENCV` — defaults to `ON`; set it to `OFF` for a camera-free build.
 - `BUILD_TESTING` — enables the automated test suite when this is the top-level project.
+
+Installed-package feature metadata is separate from those source options.
+After `find_package`, consumers can require the features compiled into the
+installed binary:
+
+```cmake
+find_package(librobot 1.1 REQUIRED)
+if(NOT librobot_AMCL_ENABLED)
+    message(FATAL_ERROR "Installed librobot does not contain AMCL support")
+endif()
+if(NOT librobot_OPENCV_ENABLED)
+    message(FATAL_ERROR "Installed librobot does not contain OpenCV support")
+endif()
+```
 
 On Windows, select `-G "Visual Studio 17 2022" -A x64`, use the matching Qt kit, and pass `-DOpenCV_DIR=C:\path\to\opencv\build\x64\vc17\lib` when discovery needs help. On macOS, per-configure hints such as `-DQt6_DIR="$(brew --prefix qt@6)/lib/cmake/Qt6"` and `-DOpenCV_DIR="$(brew --prefix opencv)/lib/cmake/opencv4"` are preferable to a global prefix-path change.
 

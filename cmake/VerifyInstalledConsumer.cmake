@@ -111,6 +111,39 @@ if(WIN32)
     endif()
 endif()
 
+if(UNIX AND LIBROBOT_EXPECT_AMCL)
+    foreach(required_variable IN ITEMS
+            LIBROBOT_NM
+            LIBROBOT_SYSTEM_NAME
+            LIBROBOT_SYMBOL_VERIFY_SCRIPT)
+        if(NOT DEFINED ${required_variable})
+            message(FATAL_ERROR "Missing required variable ${required_variable}")
+        endif()
+    endforeach()
+    file(GLOB installed_libraries
+        "${LIBROBOT_INSTALL_PREFIX}/${LIBROBOT_INSTALL_LIBDIR}/liblibrobot*")
+    list(FILTER installed_libraries EXCLUDE REGEX "\\.a$")
+    if(NOT installed_libraries)
+        message(FATAL_ERROR "Installed librobot shared library is missing")
+    endif()
+    list(GET installed_libraries 0 installed_library)
+    execute_process(
+        COMMAND "${CMAKE_COMMAND}"
+            "-DLIBROBOT_LIBRARY=${installed_library}"
+            "-DLIBROBOT_NM=${LIBROBOT_NM}"
+            "-DLIBROBOT_PLATFORM=${LIBROBOT_SYSTEM_NAME}"
+            -P "${LIBROBOT_SYMBOL_VERIFY_SCRIPT}"
+        RESULT_VARIABLE symbol_result
+        OUTPUT_VARIABLE symbol_output
+        ERROR_VARIABLE symbol_error
+    )
+    if(NOT symbol_result EQUAL 0)
+        message(FATAL_ERROR
+            "Installed symbol verification failed (${symbol_result}).\n"
+            "${symbol_output}${symbol_error}")
+    endif()
+endif()
+
 set(configure_command
     "${CMAKE_COMMAND}"
     -S "${LIBROBOT_CONSUMER_SOURCE_DIR}"

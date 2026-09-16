@@ -71,7 +71,17 @@ set_target_properties(librobot PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
     DEBUG_POSTFIX _d
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN YES
 )
+
+if(LIBROBOT_ENABLE_AMCL AND UNIX AND NOT APPLE AND
+        CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    # Prevent symbols from any linked static archive from entering the ELF
+    # dynamic symbol table even if a dependency was built with default
+    # visibility.  libRobot remains public through ROBOT_EXPORT.
+    target_link_options(librobot PRIVATE "LINKER:--exclude-libs,ALL")
+endif()
 
 install(TARGETS librobot
     EXPORT librobotTargets
