@@ -1,0 +1,242 @@
+name: CI
+
+"on":
+  pull_request:
+  push:
+    branches:
+      - feature/amcl-opencv-integration
+    tags:
+      - v1.1.0-rc.1
+      - v1.1.0
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  untrusted:
+    name: Public ${{ matrix.os }} ${{ matrix.build_type }} OpenCV-${{ matrix.opencv }}
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["windows", "ubuntu", "macos"]
+        build_type: ["Debug", "Release"]
+        opencv: ["ON", "OFF"]
+        include:
+          - os: windows
+            runner: windows-2022
+          - os: ubuntu
+            runner: ubuntu-24.04
+          - os: macos
+            runner: macos-15
+    steps:
+      - name: Check out public source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Qt 6.8.3 for MSVC 2022 x64
+        if: matrix.os == 'windows'
+        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        with:
+          version: "6.8.3"
+          arch: win64_msvc2022_64
+          cache: false
+
+      - name: Install Qt 6.8.3
+        if: matrix.os != 'windows'
+        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        with:
+          version: "6.8.3"
+          cache: false
+
+      - name: Validate Windows x64 and install official OpenCV 4.14.0
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
+            throw "Expected AMD64 runner, got $env:PROCESSOR_ARCHITECTURE"
+          }
+          $asset = Join-Path $PWD 'opencv-4.14.0-windows.exe'
+          Invoke-WebRequest -Uri 'https://github.com/opencv/opencv/releases/download/4.14.0/opencv-4.14.0-windows.exe' -OutFile $asset
+          $actual = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne '5f266a8b73bed535962d7e861a6457e32a0dd5f463ad0a7cf8707a135469be63') {
+            throw "OpenCV 4.14.0 SHA256 mismatch"
+          }
+          & $asset -y -d (Join-Path $PWD 'opencv-dist')
+          if ($LASTEXITCODE -ne 0) { throw "OpenCV extraction failed: $LASTEXITCODE" }
+          $opencvDir = Join-Path $PWD 'opencv-dist/opencv/build/x64/vc17/lib'
+          if (-not (Test-Path -LiteralPath (Join-Path $opencvDir 'OpenCVConfig.cmake'))) {
+            throw "Official OpenCV MSVC x64 package layout changed"
+          }
+          "OpenCV_DIR=$opencvDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Validate Ubuntu x64 and install apt OpenCV
+        if: matrix.os == 'ubuntu'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          sudo apt-get update
+          sudo apt-get install --yes libopencv-dev ninja-build
+          pkg-config --modversion opencv4
+
+      - name: Validate macOS arm64 and install Homebrew OpenCV
+        if: matrix.os == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = arm64
+          brew install opencv ninja
+          echo "OpenCV_DIR=$(brew --prefix opencv)/lib/cmake/opencv4" >> "$GITHUB_ENV"
+          pkg-config --modversion opencv4
+
+      - name: Configure public Windows build
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: >
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=OFF
+          -DLIBROBOT_ENABLE_OPENCV=${{ matrix.opencv }}
+          -DOpenCV_DIR="$env:OpenCV_DIR"
+
+      - name: Configure public Unix build
+        if: matrix.os != 'windows'
+        shell: bash
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=OFF
+          -DLIBROBOT_ENABLE_OPENCV=${{ matrix.opencv }}
+
+      - name: Build public configuration
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel 2
+
+      - name: Test public configuration without hardware
+        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure
+
+  trusted:
+    name: Trusted ${{ matrix.os }} ${{ matrix.build_type }}
+    if: github.event_name == 'push' && github.repository == 'dekdekan/librobot_RMR'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["windows", "ubuntu", "macos"]
+        build_type: ["Debug", "Release"]
+        include:
+          - os: windows
+            runner: windows-2022
+          - os: ubuntu
+            runner: ubuntu-24.04
+          - os: macos
+            runner: macos-15
+    steps:
+      - name: Check out public source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check out pinned private AMCL
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: dekdekan/amcl
+          ref: v1.0.0
+          path: private-amcl
+          ssh-key: ${{ secrets.AMCL_DEPLOY_KEY }}
+          persist-credentials: false
+
+      - name: Verify immutable AMCL revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C private-amcl rev-parse HEAD)" = dc39c300ec2bb60cae13603a5cae460e325f6c26
+
+      - name: Install Qt 6.8.3 for MSVC 2022 x64
+        if: matrix.os == 'windows'
+        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        with:
+          version: "6.8.3"
+          arch: win64_msvc2022_64
+          cache: false
+
+      - name: Install Qt 6.8.3
+        if: matrix.os != 'windows'
+        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        with:
+          version: "6.8.3"
+          cache: false
+
+      - name: Validate Windows x64 and install official OpenCV 4.14.0
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
+            throw "Expected AMD64 runner, got $env:PROCESSOR_ARCHITECTURE"
+          }
+          $asset = Join-Path $PWD 'opencv-4.14.0-windows.exe'
+          Invoke-WebRequest -Uri 'https://github.com/opencv/opencv/releases/download/4.14.0/opencv-4.14.0-windows.exe' -OutFile $asset
+          $actual = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne '5f266a8b73bed535962d7e861a6457e32a0dd5f463ad0a7cf8707a135469be63') {
+            throw "OpenCV 4.14.0 SHA256 mismatch"
+          }
+          & $asset -y -d (Join-Path $PWD 'opencv-dist')
+          if ($LASTEXITCODE -ne 0) { throw "OpenCV extraction failed: $LASTEXITCODE" }
+          $opencvDir = Join-Path $PWD 'opencv-dist/opencv/build/x64/vc17/lib'
+          if (-not (Test-Path -LiteralPath (Join-Path $opencvDir 'OpenCVConfig.cmake'))) {
+            throw "Official OpenCV MSVC x64 package layout changed"
+          }
+          "OpenCV_DIR=$opencvDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Validate Ubuntu x64 and install apt OpenCV
+        if: matrix.os == 'ubuntu'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          sudo apt-get update
+          sudo apt-get install --yes libopencv-dev ninja-build
+          pkg-config --modversion opencv4
+
+      - name: Validate macOS arm64 and install Homebrew OpenCV
+        if: matrix.os == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = arm64
+          brew install opencv ninja
+          echo "OpenCV_DIR=$(brew --prefix opencv)/lib/cmake/opencv4" >> "$GITHUB_ENV"
+          pkg-config --modversion opencv4
+
+      - name: Configure trusted Windows build
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: >
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=ON
+          -DLIBROBOT_ENABLE_OPENCV=ON
+          -DFETCHCONTENT_SOURCE_DIR_AMCL="${{ github.workspace }}/private-amcl"
+          -DOpenCV_DIR="$env:OpenCV_DIR"
+
+      - name: Configure trusted Unix build
+        if: matrix.os != 'windows'
+        shell: bash
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=ON
+          -DLIBROBOT_ENABLE_OPENCV=ON
+          -DFETCHCONTENT_SOURCE_DIR_AMCL="${{ github.workspace }}/private-amcl"
+
+      - name: Build trusted configuration
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel 2
+
+      - name: Test trusted configuration without hardware
+        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure
