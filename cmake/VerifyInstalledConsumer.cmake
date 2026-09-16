@@ -196,6 +196,10 @@ endif()
 
 set(consumer_executable
     "${LIBROBOT_CONSUMER_BINARY_DIR}/librobot_consumer${LIBROBOT_EXECUTABLE_SUFFIX}")
+if(NOT EXISTS "${consumer_executable}" AND LIBROBOT_BUILD_TYPE)
+    set(consumer_executable
+        "${LIBROBOT_CONSUMER_BINARY_DIR}/${LIBROBOT_BUILD_TYPE}/librobot_consumer${LIBROBOT_EXECUTABLE_SUFFIX}")
+endif()
 if(NOT EXISTS "${consumer_executable}")
     message(FATAL_ERROR "External consumer executable is missing")
 endif()

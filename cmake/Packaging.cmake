@@ -34,68 +34,9 @@ if(WIN32)
     if(NOT EXISTS "${_librobot_stock_nsis_template}")
         message(FATAL_ERROR "Could not locate CPack's NSIS.template.in")
     endif()
-    file(READ "${_librobot_stock_nsis_template}"
-        _librobot_nsis_template_contents)
-    string(REPLACE "\r\n" "\n" _librobot_nsis_template_contents
-        "${_librobot_nsis_template_contents}")
-
-    function(_librobot_replace_nsis_template original replacement expected_count description)
-        set(remaining "${_librobot_nsis_template_contents}")
-        set(actual_count 0)
-        while(TRUE)
-            string(FIND "${remaining}" "${original}" match_index)
-            if(match_index EQUAL -1)
-                break()
-            endif()
-            math(EXPR actual_count "${actual_count} + 1")
-            string(LENGTH "${original}" original_length)
-            math(EXPR next_index "${match_index} + ${original_length}")
-            string(SUBSTRING "${remaining}" ${next_index} -1 remaining)
-        endwhile()
-        if(NOT actual_count EQUAL expected_count)
-            message(FATAL_ERROR
-                "Cannot customize the CPack NSIS template: expected ${expected_count} "
-                "${description} fragment(s), found ${actual_count}")
-        endif()
-        string(REPLACE "${original}" "${replacement}"
-            _librobot_nsis_template_contents
-            "${_librobot_nsis_template_contents}")
-        set(_librobot_nsis_template_contents
-            "${_librobot_nsis_template_contents}" PARENT_SCOPE)
-    endfunction()
-
-    _librobot_replace_nsis_template(
-        "RequestExecutionLevel admin" "RequestExecutionLevel user" 1
-        "execution-level")
-    _librobot_replace_nsis_template(
-        "SetShellVarContext all" "SetShellVarContext current" 4
-        "shell-context")
-    _librobot_replace_nsis_template(
-        [=[ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "UninstallString"]=]
-        [=[ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "UninstallString"]=]
-        1 "upgrade-uninstaller registry")
-    _librobot_replace_nsis_template(
-        [=[ReadRegStr $1 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "DisplayName"]=]
-        [=[ReadRegStr $1 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "DisplayName"]=]
-        1 "upgrade-display-name registry")
-    _librobot_replace_nsis_template(
-        [=[HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@\Components\${SecName}"]=]
-        [=[HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@\Components\${SecName}"]=]
-        3 "component registry")
-    _librobot_replace_nsis_template(
-        [=[StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"]=]
-        [=[StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"]=]
-        1 "current-user install-directory")
-    _librobot_replace_nsis_template(
-        "  noOptionsPage:\nFunctionEnd"
-        "  noOptionsPage:\n  SetShellVarContext current\n  StrCpy $SV_ALLUSERS \"JustMe\"\n  StrCpy $INSTDIR \"$LOCALAPPDATA\\@CPACK_PACKAGE_INSTALL_DIRECTORY@\"\nFunctionEnd"
-        1 "installer final current-user scope")
-    _librobot_replace_nsis_template(
-        "Function un.onInit\n\n  ClearErrors"
-        "Function un.onInit\n\n  SetShellVarContext current\n  ClearErrors"
-        1 "uninstaller current-user scope")
-    file(WRITE "${_librobot_nsis_template}"
-        "${_librobot_nsis_template_contents}")
+    include("${CMAKE_CURRENT_LIST_DIR}/CustomizeNsisTemplate.cmake")
+    librobot_customize_nsis_template(
+        "${_librobot_stock_nsis_template}" "${_librobot_nsis_template}")
     list(PREPEND CPACK_MODULE_PATH "${_librobot_nsis_module_directory}")
 
     # CPack installs Release normally.  Stage Debug first so the installer and
@@ -188,6 +129,15 @@ if(BUILD_TESTING)
                 "-DLIBROBOT_NSIS_TEMPLATE=${_librobot_nsis_template}"
                 "-DLIBROBOT_NSIS_TEST_DIRECTORY=${CMAKE_BINARY_DIR}/package-nsis-template"
                 -P "${_librobot_package_test_directory}/verify_nsis_template.cmake")
+        add_test(
+            NAME package.nsis_template.cmake_3_31
+            COMMAND "${CMAKE_COMMAND}"
+                "-DLIBROBOT_NSIS_CUSTOMIZER=${PROJECT_SOURCE_DIR}/cmake/CustomizeNsisTemplate.cmake"
+                "-DLIBROBOT_NSIS_STOCK_TEMPLATE=${_librobot_package_test_directory}/NSIS.cmake-3.31.template.in"
+                "-DLIBROBOT_NSIS_OUTPUT_TEMPLATE=${CMAKE_BINARY_DIR}/NSIS.cmake-3.31.customized.in"
+                "-DLIBROBOT_NSIS_TEST_DIRECTORY=${CMAKE_BINARY_DIR}/package-nsis-template-cmake-3.31"
+                "-DLIBROBOT_NSIS_VERIFY_SCRIPT=${_librobot_package_test_directory}/verify_nsis_template.cmake"
+                -P "${_librobot_package_test_directory}/verify_nsis_customization.cmake")
 
         find_program(_librobot_makensis makensis)
         if(_librobot_makensis)
