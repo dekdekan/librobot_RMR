@@ -82,6 +82,7 @@ add_test(
         -DLIBROBOT_SOURCE_CMAKE=${PROJECT_SOURCE_DIR}/src/CMakeLists.txt
         -DLIBROBOT_ROOT_CMAKE=${PROJECT_SOURCE_DIR}/CMakeLists.txt
         -DLIBROBOT_README=${PROJECT_SOURCE_DIR}/README.md
+        -DLIBROBOT_CI_WORKFLOW=${PROJECT_SOURCE_DIR}/.github/workflows/ci.yml
         -DLIBROBOT_RELEASE_WORKFLOW=${PROJECT_SOURCE_DIR}/.github/workflows/release.yml
         -P ${CMAKE_CURRENT_SOURCE_DIR}/verify_final_contracts.cmake
 )

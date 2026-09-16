@@ -112,8 +112,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(uname -m)" = arm64
-          brew install opencv ninja
-          opencv_config="$(find "$(brew --prefix opencv)" -type f -name OpenCVConfig.cmake -print -quit)"
+          brew install opencv@4 ninja
+          opencv_config="$(find "$(brew --prefix opencv@4)" -type f -name OpenCVConfig.cmake -print -quit)"
           test -n "$opencv_config"
           opencv_dir="$(dirname "$opencv_config")"
           echo "OpenCV_DIR=$opencv_dir" >> "$GITHUB_ENV"
@@ -249,8 +249,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(uname -m)" = arm64
-          brew install opencv ninja
-          opencv_config="$(find "$(brew --prefix opencv)" -type f -name OpenCVConfig.cmake -print -quit)"
+          brew install opencv@4 ninja
+          opencv_config="$(find "$(brew --prefix opencv@4)" -type f -name OpenCVConfig.cmake -print -quit)"
           test -n "$opencv_config"
           opencv_dir="$(dirname "$opencv_config")"
           echo "OpenCV_DIR=$opencv_dir" >> "$GITHUB_ENV"
