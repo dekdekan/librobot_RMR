@@ -32,44 +32,40 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check out pinned private AMCL
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up pinned Python for the Qt installer
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          repository: dekdekan/amcl
-          ref: v1.0.0
-          path: private-amcl
-          ssh-key: ${{ secrets.AMCL_DEPLOY_KEY }}
-          persist-credentials: false
-
-      - name: Verify immutable AMCL revision
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git -C private-amcl rev-parse HEAD)" = dc39c300ec2bb60cae13603a5cae460e325f6c26
+          python-version: "3.13.3"
 
       - name: Install Qt 6.8.3 for MSVC 2022 x64
         if: matrix.os == 'windows'
-        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        uses: jurplel/install-qt-action/action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1 internal action
         with:
           version: "6.8.3"
           arch: win64_msvc2022_64
-          cache: false
+          cache: "false"
+          aqtversion: "==3.3.0"
+          py7zrversion: "==1.1.0"
 
       - name: Install Qt 6.8.3
         if: matrix.os != 'windows'
-        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        uses: jurplel/install-qt-action/action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1 internal action
         with:
           version: "6.8.3"
-          cache: false
+          cache: "false"
+          aqtversion: "==3.3.0"
+          py7zrversion: "==1.1.0"
 
       - name: Validate Windows x64 and install release tools
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
           if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
             throw "Expected AMD64 runner, got $env:PROCESSOR_ARCHITECTURE"
           }
-          choco install nsis --yes --no-progress
+          choco install nsis --version=3.12.0 --yes --no-progress
           $asset = Join-Path $PWD 'opencv-4.14.0-windows.exe'
           Invoke-WebRequest -Uri 'https://github.com/opencv/opencv/releases/download/4.14.0/opencv-4.14.0-windows.exe' -OutFile $asset
           $actual = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -104,10 +100,27 @@ jobs:
           echo "OpenCV_DIR=$(brew --prefix opencv)/lib/cmake/opencv4" >> "$GITHUB_ENV"
           pkg-config --modversion opencv4
 
+      - name: Check out pinned private AMCL after dependency setup
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: dekdekan/amcl
+          ref: v1.0.0
+          path: private-amcl
+          ssh-key: ${{ secrets.AMCL_DEPLOY_KEY }}
+          persist-credentials: false
+
+      - name: Verify immutable AMCL revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C private-amcl rev-parse HEAD)" = dc39c300ec2bb60cae13603a5cae460e325f6c26
+
       - name: Prepare package manifest install rule on Windows
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
           New-Item -ItemType File -Path build-manifest.txt -Force | Out-Null
           'install(FILES "${LIBROBOT_BUILD_MANIFEST}" DESTINATION "share/librobot")' |
             Set-Content -LiteralPath package-manifest.cmake -Encoding utf8
@@ -123,14 +136,16 @@ jobs:
       - name: Configure Windows release tree
         if: matrix.os == 'windows'
         shell: pwsh
-        run: >
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-          -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=ON
-          -DLIBROBOT_ENABLE_OPENCV=ON
-          -DFETCHCONTENT_SOURCE_DIR_AMCL="${{ github.workspace }}/private-amcl"
-          -DOpenCV_DIR="$env:OpenCV_DIR"
-          -DLIBROBOT_BUILD_MANIFEST="${{ github.workspace }}/build-manifest.txt"
-          -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES="${{ github.workspace }}/package-manifest.cmake"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+            -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=ON `
+            -DLIBROBOT_ENABLE_OPENCV=ON `
+            -DFETCHCONTENT_SOURCE_DIR_AMCL="${{ github.workspace }}/private-amcl" `
+            -DOpenCV_DIR="$env:OpenCV_DIR" `
+            -DLIBROBOT_BUILD_MANIFEST="${{ github.workspace }}/build-manifest.txt" `
+            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES="${{ github.workspace }}/package-manifest.cmake"
 
       - name: Configure Unix Debug tree
         if: matrix.os != 'windows'
@@ -158,6 +173,8 @@ jobs:
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
           $compilerFile = Get-ChildItem -LiteralPath build/CMakeFiles -Filter CMakeCXXCompiler.cmake -Recurse |
             Select-Object -First 1
           if (-not $compilerFile) { throw 'CMake compiler metadata is missing' }
@@ -207,6 +224,8 @@ jobs:
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
           cmake --build build --config Debug --parallel 2
           cmake --build build --config Release --parallel 2
 
@@ -214,6 +233,8 @@ jobs:
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
           ctest --test-dir build -C Debug --output-on-failure
           ctest --test-dir build -C Release --output-on-failure
           ctest --test-dir build -C Release -R '^package\.layout\.' --output-on-failure
@@ -233,6 +254,35 @@ jobs:
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+
+          function Test-LibrobotConsumer {
+            param(
+              [Parameter(Mandatory)] [string] $Prefix,
+              [Parameter(Mandatory)] [string] $BuildDirectory
+            )
+            cmake -S tests/consumer -B $BuildDirectory -G "Visual Studio 17 2022" -A x64 `
+              -Dlibrobot_DIR="$Prefix/lib/cmake/librobot" `
+              -DQt6_DIR="$env:QT_ROOT_DIR/lib/cmake/Qt6" `
+              -DOpenCV_DIR="$env:OpenCV_DIR" `
+              -DLIBROBOT_CONSUMER_EXPECT_AMCL=ON `
+              -DLIBROBOT_CONSUMER_EXPECT_OPENCV=ON
+            cmake --build $BuildDirectory --config Release --parallel 2
+            $consumer = Join-Path $BuildDirectory 'Release/librobot_consumer.exe'
+            if (-not (Test-Path -LiteralPath $consumer -PathType Leaf)) {
+              throw "Installed-package consumer is missing: $consumer"
+            }
+            $savedProcessPath = $env:PATH
+            $opencvRuntime = Join-Path (Split-Path $env:OpenCV_DIR -Parent) 'bin'
+            try {
+              $env:PATH = "$(Join-Path $Prefix 'bin');$(Join-Path $env:QT_ROOT_DIR 'bin');$opencvRuntime;$savedProcessPath"
+              & $consumer
+            } finally {
+              $env:PATH = $savedProcessPath
+            }
+          }
+
           cpack --config build/CPackConfig.cmake -C Release -G NSIS
           cpack --config build/CPackConfig.cmake -C Release -G ZIP
           $packageDir = Join-Path $PWD 'build/packages'
@@ -241,7 +291,7 @@ jobs:
           if (-not (Test-Path -LiteralPath $installer) -or -not (Test-Path -LiteralPath $archive)) {
             throw 'CPack did not produce the exact Windows NSIS and ZIP artifacts'
           }
-          $stage = Join-Path $PWD 'package-stage-zip'
+          $stage = Join-Path $PWD 'portable-install'
           Expand-Archive -LiteralPath $archive -DestinationPath $stage
           foreach ($entry in @('bin/librobot.dll', 'bin/librobot_d.dll', 'lib/librobot.lib',
               'lib/librobot_d.lib', 'include/librobot/librobot.h',
@@ -263,16 +313,71 @@ jobs:
             $_.FullName -match 'private-amcl|[\\/](lib)?amcl[^\\/]*\.(dll|lib|a)$|[\\/](opencv|Qt6)[^\\/]*\.dll$'
           }
           if ($forbidden) { throw 'Windows ZIP contains a private AMCL or bundled dependency file' }
-          & $installer /S
-          if ($LASTEXITCODE -ne 0) { throw "NSIS install failed: $LASTEXITCODE" }
+
+          $originalUserRoot = [Environment]::GetEnvironmentVariable('LIBROBOT_ROOT', [EnvironmentVariableTarget]::User)
+          $originalUserPath = [Environment]::GetEnvironmentVariable('Path', [EnvironmentVariableTarget]::User)
+          if ($null -ne $originalUserRoot) { throw 'Disposable runner already has a user LIBROBOT_ROOT' }
+          $portableBin = Join-Path $stage 'bin'
+          try {
+            [Environment]::SetEnvironmentVariable('LIBROBOT_ROOT', $stage, [EnvironmentVariableTarget]::User)
+            $portableUserPath = if ([string]::IsNullOrWhiteSpace($originalUserPath)) {
+              $portableBin
+            } else {
+              "$portableBin;$originalUserPath"
+            }
+            [Environment]::SetEnvironmentVariable('Path', $portableUserPath, [EnvironmentVariableTarget]::User)
+            if ([Environment]::GetEnvironmentVariable('LIBROBOT_ROOT', [EnvironmentVariableTarget]::User) -ne $stage) {
+              throw 'Portable ZIP LIBROBOT_ROOT was not installed'
+            }
+            if ([Environment]::GetEnvironmentVariable('Path', [EnvironmentVariableTarget]::User) -notlike "$portableBin*") {
+              throw 'Portable ZIP bin directory was not added to the user PATH'
+            }
+            Test-LibrobotConsumer -Prefix $stage -BuildDirectory (Join-Path $PWD 'consumer-zip')
+          } finally {
+            [Environment]::SetEnvironmentVariable('LIBROBOT_ROOT', $null, [EnvironmentVariableTarget]::User)
+            [Environment]::SetEnvironmentVariable('Path', $originalUserPath, [EnvironmentVariableTarget]::User)
+          }
+          Remove-Item -LiteralPath $stage -Recurse -Force
+          if (Test-Path -LiteralPath $stage) { throw 'Portable ZIP uninstall left installed files' }
+          if ($null -ne [Environment]::GetEnvironmentVariable('LIBROBOT_ROOT', [EnvironmentVariableTarget]::User)) {
+            throw 'Portable ZIP uninstall left LIBROBOT_ROOT set'
+          }
+          if ([Environment]::GetEnvironmentVariable('Path', [EnvironmentVariableTarget]::User) -ne $originalUserPath) {
+            throw 'Portable ZIP uninstall did not restore the user PATH'
+          }
+
+          $installProcess = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
+          if ($installProcess.ExitCode -ne 0) { throw "NSIS install failed: $($installProcess.ExitCode)" }
           $installed = Join-Path $env:LOCALAPPDATA 'librobot'
           foreach ($entry in @('bin/librobot.dll', 'bin/librobot_d.dll', 'share/librobot/build-manifest.txt', 'Uninstall.exe')) {
             if (-not (Test-Path -LiteralPath (Join-Path $installed $entry))) {
               throw "Installed NSIS layout is missing $entry"
             }
           }
-          & (Join-Path $installed 'Uninstall.exe') /S
-          if ($LASTEXITCODE -ne 0) { throw "NSIS uninstall failed: $LASTEXITCODE" }
+          $installedBin = Join-Path $installed 'bin'
+          if ([Environment]::GetEnvironmentVariable('LIBROBOT_ROOT', [EnvironmentVariableTarget]::User) -ne $installed) {
+            throw 'NSIS did not set the documented user LIBROBOT_ROOT'
+          }
+          $installedPathEntries = [Environment]::GetEnvironmentVariable('Path', [EnvironmentVariableTarget]::User) -split ';' |
+            ForEach-Object { $_.Trim().TrimEnd('\\') }
+          if ($installedPathEntries -notcontains $installedBin.TrimEnd('\\')) {
+            throw 'NSIS did not add its bin directory to the documented user PATH'
+          }
+          Test-LibrobotConsumer -Prefix $installed -BuildDirectory (Join-Path $PWD 'consumer-nsis')
+          $uninstallProcess = Start-Process -FilePath (Join-Path $installed 'Uninstall.exe') -ArgumentList '/S' -Wait -PassThru
+          if ($uninstallProcess.ExitCode -ne 0) { throw "NSIS uninstall failed: $($uninstallProcess.ExitCode)" }
+          if (Test-Path -LiteralPath $installed) { throw 'NSIS uninstall left the install directory' }
+          if ($null -ne [Environment]::GetEnvironmentVariable('LIBROBOT_ROOT', [EnvironmentVariableTarget]::User)) {
+            throw 'NSIS uninstall left LIBROBOT_ROOT set instead of removed'
+          }
+          $uninstalledPathEntries = [Environment]::GetEnvironmentVariable('Path', [EnvironmentVariableTarget]::User) -split ';' |
+            ForEach-Object { $_.Trim().TrimEnd('\\') }
+          if ($uninstalledPathEntries -contains $installedBin.TrimEnd('\\')) {
+            throw 'NSIS uninstall left its bin directory in the user PATH'
+          }
+          if (Test-Path -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\librobot') {
+            throw 'NSIS uninstall left the Installed apps registry entry'
+          }
           New-Item -ItemType Directory -Path release-assets -Force | Out-Null
           Copy-Item -LiteralPath $installer, $archive -Destination release-assets
           foreach ($artifact in Get-ChildItem -LiteralPath release-assets -File) {
@@ -307,6 +412,43 @@ jobs:
               exit 1
             fi
           done
+
+          test_installed_consumer() {
+            build_dir=$1
+            cmake -S tests/consumer -B "$build_dir" -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -Dlibrobot_DIR=/usr/lib/cmake/librobot \
+              -DQt6_DIR="$QT_ROOT_DIR/lib/cmake/Qt6" \
+              -DLIBROBOT_CONSUMER_EXPECT_AMCL=ON \
+              -DLIBROBOT_CONSUMER_EXPECT_OPENCV=ON
+            cmake --build "$build_dir" --parallel 2
+            test -x "$build_dir/librobot_consumer"
+            LD_LIBRARY_PATH="/usr/lib:$QT_ROOT_DIR/lib:${LD_LIBRARY_PATH:-}" \
+              "$build_dir/librobot_consumer"
+          }
+
+          sudo apt install --yes "$PWD/$deb"
+          test -f /usr/lib/liblibrobot.so.1.1.0
+          test -f /usr/lib/cmake/librobot/librobotConfig.cmake
+          test_installed_consumer consumer-deb
+          sudo apt remove --yes librobot
+          test ! -e /usr/lib/liblibrobot.so.1.1.0
+          test ! -e /usr/include/librobot
+          test ! -e /usr/lib/cmake/librobot
+          test ! -e /usr/share/librobot
+
+          sudo tar -xzf "$tgz" -C /
+          sudo ldconfig
+          test -f /usr/lib/liblibrobot.so.1.1.0
+          test_installed_consumer consumer-tgz
+          sudo rm -f /usr/lib/liblibrobot.so /usr/lib/liblibrobot.so.1 /usr/lib/liblibrobot.so.1.1.0
+          sudo rm -rf /usr/include/librobot /usr/lib/cmake/librobot /usr/share/librobot
+          sudo ldconfig
+          test ! -e /usr/lib/liblibrobot.so.1.1.0
+          test ! -e /usr/include/librobot
+          test ! -e /usr/lib/cmake/librobot
+          test ! -e /usr/share/librobot
+
           mkdir release-assets
           cp "$deb" "$tgz" release-assets/
           for artifact in release-assets/*; do
@@ -336,6 +478,36 @@ jobs:
             echo 'macOS package contains private AMCL or a bundled dependency' >&2
             exit 1
           fi
+
+          (
+            cd package-stage-tgz
+            sudo ./install.sh
+          )
+          export LIBROBOT_ROOT=/usr/local
+          test "$LIBROBOT_ROOT" = /usr/local
+          test -f /usr/local/lib/liblibrobot.1.1.0.dylib
+          test -f /usr/local/lib/cmake/librobot/librobotConfig.cmake
+          cmake -S tests/consumer -B consumer-macos -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -Dlibrobot_DIR=/usr/local/lib/cmake/librobot \
+            -DQt6_DIR="$QT_ROOT_DIR/lib/cmake/Qt6" \
+            -DOpenCV_DIR="$(brew --prefix opencv)/lib/cmake/opencv4" \
+            -DLIBROBOT_CONSUMER_EXPECT_AMCL=ON \
+            -DLIBROBOT_CONSUMER_EXPECT_OPENCV=ON
+          cmake --build consumer-macos --parallel 2
+          test -x consumer-macos/librobot_consumer
+          DYLD_LIBRARY_PATH="/usr/local/lib:$QT_ROOT_DIR/lib:$(brew --prefix opencv)/lib:${DYLD_LIBRARY_PATH:-}" \
+            consumer-macos/librobot_consumer
+          (
+            cd package-stage-tgz
+            sudo ./uninstall.sh
+          )
+          unset LIBROBOT_ROOT
+          test -z "${LIBROBOT_ROOT+x}"
+          test -z "$(find /usr/local/lib -maxdepth 1 -name 'liblibrobot*' -print -quit)"
+          test ! -e /usr/local/include/librobot
+          test ! -e /usr/local/lib/cmake/librobot
+
           mkdir release-assets
           cp "$package" release-assets/
           for artifact in release-assets/*; do
@@ -364,6 +536,26 @@ jobs:
           pattern: release-*
           path: dist
           merge-multiple: true
+
+      - name: Verify every downloaded package against its SHA-256 sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          packages=(
+            librobot-1.1.0-win64.exe
+            librobot-1.1.0-win64.zip
+            librobot-1.1.0-Linux.deb
+            librobot-1.1.0-Linux.tar.gz
+            librobot-1.1.0-Darwin.tar.gz
+          )
+          for package in "${packages[@]}"; do
+            test -f "dist/$package"
+            test -f "dist/$package.sha256"
+            sidecar_target=$(awk '{ sub(/^\*/, "", $2); print $2 }' "dist/$package.sha256")
+            test "$sidecar_target" = "$package"
+            (cd dist && sha256sum --check --strict "$package.sha256")
+          done
+          test "$(find dist -maxdepth 1 -type f -name '*.sha256' | wc -l)" -eq "${#packages[@]}"
 
       - name: Build release notes from package manifests
         shell: bash

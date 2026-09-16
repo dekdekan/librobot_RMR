@@ -41,25 +41,36 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up pinned Python for the Qt installer
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13.3"
+
       - name: Install Qt 6.8.3 for MSVC 2022 x64
         if: matrix.os == 'windows'
-        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        uses: jurplel/install-qt-action/action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1 internal action
         with:
           version: "6.8.3"
           arch: win64_msvc2022_64
-          cache: false
+          cache: "false"
+          aqtversion: "==3.3.0"
+          py7zrversion: "==1.1.0"
 
       - name: Install Qt 6.8.3
         if: matrix.os != 'windows'
-        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        uses: jurplel/install-qt-action/action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1 internal action
         with:
           version: "6.8.3"
-          cache: false
+          cache: "false"
+          aqtversion: "==3.3.0"
+          py7zrversion: "==1.1.0"
 
       - name: Validate Windows x64 and install official OpenCV 4.14.0
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
           if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
             throw "Expected AMD64 runner, got $env:PROCESSOR_ARCHITECTURE"
           }
@@ -100,11 +111,13 @@ jobs:
       - name: Configure public Windows build
         if: matrix.os == 'windows'
         shell: pwsh
-        run: >
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-          -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=OFF
-          -DLIBROBOT_ENABLE_OPENCV=${{ matrix.opencv }}
-          -DOpenCV_DIR="$env:OpenCV_DIR"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+            -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=OFF `
+            -DLIBROBOT_ENABLE_OPENCV=${{ matrix.opencv }} `
+            -DOpenCV_DIR="$env:OpenCV_DIR"
 
       - name: Configure public Unix build
         if: matrix.os != 'windows'
@@ -144,40 +157,36 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check out pinned private AMCL
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up pinned Python for the Qt installer
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          repository: dekdekan/amcl
-          ref: v1.0.0
-          path: private-amcl
-          ssh-key: ${{ secrets.AMCL_DEPLOY_KEY }}
-          persist-credentials: false
-
-      - name: Verify immutable AMCL revision
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git -C private-amcl rev-parse HEAD)" = dc39c300ec2bb60cae13603a5cae460e325f6c26
+          python-version: "3.13.3"
 
       - name: Install Qt 6.8.3 for MSVC 2022 x64
         if: matrix.os == 'windows'
-        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        uses: jurplel/install-qt-action/action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1 internal action
         with:
           version: "6.8.3"
           arch: win64_msvc2022_64
-          cache: false
+          cache: "false"
+          aqtversion: "==3.3.0"
+          py7zrversion: "==1.1.0"
 
       - name: Install Qt 6.8.3
         if: matrix.os != 'windows'
-        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        uses: jurplel/install-qt-action/action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1 internal action
         with:
           version: "6.8.3"
-          cache: false
+          cache: "false"
+          aqtversion: "==3.3.0"
+          py7zrversion: "==1.1.0"
 
       - name: Validate Windows x64 and install official OpenCV 4.14.0
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
           if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
             throw "Expected AMD64 runner, got $env:PROCESSOR_ARCHITECTURE"
           }
@@ -215,15 +224,32 @@ jobs:
           echo "OpenCV_DIR=$(brew --prefix opencv)/lib/cmake/opencv4" >> "$GITHUB_ENV"
           pkg-config --modversion opencv4
 
+      - name: Check out pinned private AMCL after dependency setup
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: dekdekan/amcl
+          ref: v1.0.0
+          path: private-amcl
+          ssh-key: ${{ secrets.AMCL_DEPLOY_KEY }}
+          persist-credentials: false
+
+      - name: Verify immutable AMCL revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C private-amcl rev-parse HEAD)" = dc39c300ec2bb60cae13603a5cae460e325f6c26
+
       - name: Configure trusted Windows build
         if: matrix.os == 'windows'
         shell: pwsh
-        run: >
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-          -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=ON
-          -DLIBROBOT_ENABLE_OPENCV=ON
-          -DFETCHCONTENT_SOURCE_DIR_AMCL="${{ github.workspace }}/private-amcl"
-          -DOpenCV_DIR="$env:OpenCV_DIR"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+            -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=ON `
+            -DLIBROBOT_ENABLE_OPENCV=ON `
+            -DFETCHCONTENT_SOURCE_DIR_AMCL="${{ github.workspace }}/private-amcl" `
+            -DOpenCV_DIR="$env:OpenCV_DIR"
 
       - name: Configure trusted Unix build
         if: matrix.os != 'windows'
