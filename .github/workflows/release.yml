@@ -492,8 +492,8 @@ jobs:
           test -f package-stage-tgz/lib/liblibrobot.1.1.0.dylib
           test -f package-stage-tgz/include/librobot/librobot.h
           test -f package-stage-tgz/lib/cmake/librobot/librobotConfig.cmake
-          test -x package-stage-tgz/install.sh
-          test -x package-stage-tgz/uninstall.sh
+          test "$(/usr/bin/stat -f %A package-stage-tgz/install.sh)" = 755
+          test "$(/usr/bin/stat -f %A package-stage-tgz/uninstall.sh)" = 755
           test -f package-stage-tgz/share/librobot/build-manifest.txt
           cmp build-manifest.txt package-stage-tgz/share/librobot/build-manifest.txt
           file package-stage-tgz/lib/liblibrobot.1.1.0.dylib | grep -q arm64
@@ -509,7 +509,7 @@ jobs:
 
           (
             cd package-stage-tgz
-            sudo ./install.sh
+            sudo /bin/sh ./install.sh
           )
           export LIBROBOT_ROOT=/usr/local
           test "$LIBROBOT_ROOT" = /usr/local
@@ -528,7 +528,7 @@ jobs:
             consumer-macos/librobot_consumer
           (
             cd package-stage-tgz
-            sudo ./uninstall.sh
+            sudo /bin/sh ./uninstall.sh
           )
           unset LIBROBOT_ROOT
           test -z "${LIBROBOT_ROOT+x}"

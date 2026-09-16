@@ -60,7 +60,10 @@ endforeach()
 
 foreach(required_fragment IN ITEMS
         "VerifyExportedSymbols.cmake"
-        "LIBROBOT_QT_ROOT")
+        "LIBROBOT_QT_ROOT"
+        "/usr/bin/stat -f %A package-stage-tgz/install.sh"
+        "sudo /bin/sh ./install.sh"
+        "sudo /bin/sh ./uninstall.sh")
     if(NOT release_workflow MATCHES "${required_fragment}")
         message(FATAL_ERROR "Release verification is missing: ${required_fragment}")
     endif()
