@@ -82,6 +82,17 @@ elseif(APPLE)
         "${PROJECT_SOURCE_DIR}/packaging/macos/install.sh"
         "${PROJECT_SOURCE_DIR}/packaging/macos/uninstall.sh"
         DESTINATION .)
+    # Reassert the mode in CPack's staging tree so the TGZ records executable
+    # scripts even when the checkout or archive backend normalizes permissions.
+    install(CODE [=[
+        file(CHMOD
+            "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/install.sh"
+            "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/uninstall.sh"
+            PERMISSIONS
+                OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                GROUP_READ GROUP_EXECUTE
+                WORLD_READ WORLD_EXECUTE)
+    ]=])
 else()
     set(CPACK_GENERATOR "DEB;TGZ")
     set(CPACK_BUILD_CONFIG Release)
