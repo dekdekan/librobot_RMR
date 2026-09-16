@@ -10,8 +10,15 @@ file(REMOVE_RECURSE "${LIBROBOT_TEST_DIRECTORY}")
 file(MAKE_DIRECTORY "${LIBROBOT_TEST_DIRECTORY}")
 foreach(script_name IN ITEMS install.sh uninstall.sh)
     file(WRITE "${LIBROBOT_TEST_DIRECTORY}/${script_name}" "#!/bin/sh\n")
-    file(CHMOD "${LIBROBOT_TEST_DIRECTORY}/${script_name}"
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+    if(UNIX)
+        execute_process(
+            COMMAND /bin/chmod 644
+                "${LIBROBOT_TEST_DIRECTORY}/${script_name}"
+            COMMAND_ERROR_IS_FATAL ANY)
+    else()
+        file(CHMOD "${LIBROBOT_TEST_DIRECTORY}/${script_name}"
+            PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+    endif()
 endforeach()
 
 set(CPACK_TEMPORARY_INSTALL_DIRECTORY "${LIBROBOT_TEST_DIRECTORY}")
