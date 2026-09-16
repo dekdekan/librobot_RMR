@@ -86,10 +86,14 @@ jobs:
           if ($extractor.ExitCode -ne 0) {
             throw "OpenCV extraction failed: $($extractor.ExitCode)"
           }
-          $opencvDir = Join-Path $PWD 'opencv-dist/opencv/build/x64/vc17/lib'
-          if (-not (Test-Path -LiteralPath (Join-Path $opencvDir 'OpenCVConfig.cmake'))) {
+          $opencvConfig = Get-ChildItem -LiteralPath $PWD -Filter OpenCVConfig.cmake `
+            -Recurse -File | Where-Object {
+              $_.FullName -match '[\\/]opencv[\\/]build[\\/]x64[\\/][^\\/]+[\\/]lib[\\/]OpenCVConfig\.cmake$'
+            } | Select-Object -First 1
+          if (-not $opencvConfig) {
             throw "Official OpenCV MSVC x64 package layout changed"
           }
+          $opencvDir = $opencvConfig.DirectoryName
           "OpenCV_DIR=$opencvDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Validate Ubuntu x64 and install apt OpenCV
@@ -207,10 +211,14 @@ jobs:
           if ($extractor.ExitCode -ne 0) {
             throw "OpenCV extraction failed: $($extractor.ExitCode)"
           }
-          $opencvDir = Join-Path $PWD 'opencv-dist/opencv/build/x64/vc17/lib'
-          if (-not (Test-Path -LiteralPath (Join-Path $opencvDir 'OpenCVConfig.cmake'))) {
+          $opencvConfig = Get-ChildItem -LiteralPath $PWD -Filter OpenCVConfig.cmake `
+            -Recurse -File | Where-Object {
+              $_.FullName -match '[\\/]opencv[\\/]build[\\/]x64[\\/][^\\/]+[\\/]lib[\\/]OpenCVConfig\.cmake$'
+            } | Select-Object -First 1
+          if (-not $opencvConfig) {
             throw "Official OpenCV MSVC x64 package layout changed"
           }
+          $opencvDir = $opencvConfig.DirectoryName
           "OpenCV_DIR=$opencvDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Validate Ubuntu x64 and install apt OpenCV
