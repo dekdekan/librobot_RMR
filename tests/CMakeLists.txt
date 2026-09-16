@@ -88,6 +88,14 @@ add_test(
 )
 
 add_test(
+    NAME package.macos_permissions_hook
+    COMMAND ${CMAKE_COMMAND}
+        -DLIBROBOT_MACOS_PERMISSIONS_HOOK=${PROJECT_SOURCE_DIR}/cmake/FixMacosPackagePermissions.cmake
+        -DLIBROBOT_TEST_DIRECTORY=${CMAKE_BINARY_DIR}/package-macos-permissions-hook
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/packaging/verify_macos_permissions_hook.cmake
+)
+
+add_test(
     NAME librobot.symbol_contract.accepts_public_abi
     COMMAND ${CMAKE_COMMAND}
         -DLIBROBOT_SYMBOL_DUMP_FILE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/public-symbols.txt
