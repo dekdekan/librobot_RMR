@@ -165,11 +165,11 @@ if(BUILD_TESTING)
         endif()
     elseif(APPLE)
         _librobot_add_package_layout_test(
-            package.layout.tgz TGZ .tar.gz ARCHIVE "" FALSE FALSE TRUE)
+            package.layout.tgz TGZ .tar.gz TGZ "" FALSE FALSE TRUE)
     else()
         find_program(_librobot_dpkg_deb dpkg-deb)
         _librobot_add_package_layout_test(
-            package.layout.tgz TGZ .tar.gz ARCHIVE usr FALSE FALSE FALSE)
+            package.layout.tgz TGZ .tar.gz TGZ usr FALSE FALSE FALSE)
         _librobot_add_package_layout_test(
             package.layout.deb DEB .deb DEB usr FALSE FALSE FALSE)
     endif()

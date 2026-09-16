@@ -22,6 +22,16 @@ if(LIBROBOT_PACKAGE_FORMAT STREQUAL "DEB")
         message(FATAL_ERROR
             "Could not extract ${LIBROBOT_PACKAGE_FILE}: ${extract_error}")
     endif()
+elseif(LIBROBOT_PACKAGE_FORMAT STREQUAL "TGZ")
+    execute_process(
+        COMMAND /usr/bin/tar -xzf "${LIBROBOT_PACKAGE_FILE}"
+            -C "${LIBROBOT_EXTRACT_DIRECTORY}"
+        RESULT_VARIABLE extract_result
+        ERROR_VARIABLE extract_error)
+    if(NOT extract_result EQUAL 0)
+        message(FATAL_ERROR
+            "Could not extract ${LIBROBOT_PACKAGE_FILE}: ${extract_error}")
+    endif()
 else()
     file(ARCHIVE_EXTRACT
         INPUT "${LIBROBOT_PACKAGE_FILE}"
