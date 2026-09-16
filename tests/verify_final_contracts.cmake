@@ -34,6 +34,10 @@ foreach(workflow_content IN ITEMS "${ci_workflow}" "${release_workflow}")
         message(FATAL_ERROR
             "macOS OpenCV paths must use the versioned OpenCV 4 formula")
     endif()
+    if(NOT workflow_content MATCHES "find -H")
+        message(FATAL_ERROR
+            "macOS OpenCV discovery must follow Homebrew's opt-prefix symlink")
+    endif()
 endforeach()
 if(NOT root_cmake MATCHES
         "set_target_properties\\(amcl PROPERTIES[^)]*CXX_VISIBILITY_PRESET hidden")
