@@ -35,6 +35,18 @@ else()
     target_link_libraries(librobot_opencv_feature_off_probe PRIVATE librobot::librobot)
 endif()
 
+if(LIBROBOT_DISABLE_SKELETON)
+    add_library(librobot_skeleton_feature_off_probe OBJECT
+        skeleton_feature_off_probe.cpp)
+    target_link_libraries(librobot_skeleton_feature_off_probe PRIVATE
+        librobot::librobot)
+else()
+    add_executable(librobot_skeleton_udp_test skeleton_udp_test.cpp)
+    target_link_libraries(librobot_skeleton_udp_test PRIVATE librobot::librobot)
+    add_test(NAME librobot.skeleton_udp COMMAND librobot_skeleton_udp_test)
+    set_tests_properties(librobot.skeleton_udp PROPERTIES TIMEOUT 60)
+endif()
+
 add_executable(librobot_runtime_lifecycle_test runtime_lifecycle_test.cpp)
 target_link_libraries(librobot_runtime_lifecycle_test PRIVATE librobot::librobot)
 add_test(NAME librobot.runtime_lifecycle COMMAND librobot_runtime_lifecycle_test)
@@ -73,6 +85,7 @@ add_test(
     COMMAND ${CMAKE_COMMAND}
         -DCONFIG_FILE=${CMAKE_BINARY_DIR}/librobotConfig.cmake
         -DEXPECT_OPENCV=${LIBROBOT_ENABLE_OPENCV}
+        -DEXPECT_SKELETON=$<NOT:$<BOOL:${LIBROBOT_DISABLE_SKELETON}>>
         -P ${CMAKE_CURRENT_SOURCE_DIR}/verify_generated_config.cmake
 )
 
@@ -155,6 +168,9 @@ if(WIN32)
     if(LIBROBOT_ENABLE_OPENCV)
         list(APPEND librobot_runtime_tests librobot.opencv_api)
     endif()
+    if(NOT LIBROBOT_DISABLE_SKELETON)
+        list(APPEND librobot_runtime_tests librobot.skeleton_udp)
+    endif()
     set_tests_properties(${librobot_runtime_tests} PROPERTIES
         ENVIRONMENT "PATH=${librobot_test_runtime_path}"
     )
@@ -180,6 +196,7 @@ add_test(
         -DLIBROBOT_MT=${CMAKE_MT}
         -DLIBROBOT_EXPECT_AMCL=${LIBROBOT_ENABLE_AMCL}
         -DLIBROBOT_EXPECT_OPENCV=${LIBROBOT_ENABLE_OPENCV}
+        -DLIBROBOT_EXPECT_SKELETON=$<NOT:$<BOOL:${LIBROBOT_DISABLE_SKELETON}>>
         -DLIBROBOT_INSTALL_LIBDIR=${CMAKE_INSTALL_LIBDIR}
         -DLIBROBOT_EXECUTABLE_SUFFIX=${CMAKE_EXECUTABLE_SUFFIX}
         -DLIBROBOT_QT6_DIR=${Qt6_DIR}

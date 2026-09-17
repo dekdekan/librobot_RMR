@@ -9,6 +9,7 @@ foreach(required_variable IN ITEMS
         LIBROBOT_MAKE_PROGRAM
         LIBROBOT_EXPECT_AMCL
         LIBROBOT_EXPECT_OPENCV
+        LIBROBOT_EXPECT_SKELETON
         LIBROBOT_INSTALL_LIBDIR)
     if(NOT DEFINED ${required_variable})
         message(FATAL_ERROR "Missing required variable ${required_variable}")
@@ -52,6 +53,11 @@ if(LIBROBOT_EXPECT_OPENCV)
 else()
     set(expected_opencv FALSE)
 endif()
+if(LIBROBOT_EXPECT_SKELETON)
+    set(expected_skeleton TRUE)
+else()
+    set(expected_skeleton FALSE)
+endif()
 if(NOT config_contents MATCHES
         "set\\(librobot_AMCL_ENABLED ${expected_amcl}\\)")
     message(FATAL_ERROR "Installed AMCL feature metadata is not literal ${expected_amcl}")
@@ -59,6 +65,10 @@ endif()
 if(NOT config_contents MATCHES
         "set\\(librobot_OPENCV_ENABLED ${expected_opencv}\\)")
     message(FATAL_ERROR "Installed OpenCV feature metadata is not literal ${expected_opencv}")
+endif()
+if(NOT config_contents MATCHES
+        "set\\(librobot_SKELETON_ENABLED ${expected_skeleton}\\)")
+    message(FATAL_ERROR "Installed skeleton feature metadata is not literal ${expected_skeleton}")
 endif()
 
 file(GLOB target_fragments "${package_dir}/librobotTargets-*.cmake")
@@ -155,6 +165,7 @@ set(configure_command
     "-Dlibrobot_DIR:PATH=${package_dir}"
     "-DLIBROBOT_CONSUMER_EXPECT_AMCL=${LIBROBOT_EXPECT_AMCL}"
     "-DLIBROBOT_CONSUMER_EXPECT_OPENCV=${LIBROBOT_EXPECT_OPENCV}"
+    "-DLIBROBOT_CONSUMER_EXPECT_SKELETON=${LIBROBOT_EXPECT_SKELETON}"
 )
 if(LIBROBOT_QT6_DIR)
     list(APPEND configure_command "-DQt6_DIR:PATH=${LIBROBOT_QT6_DIR}")

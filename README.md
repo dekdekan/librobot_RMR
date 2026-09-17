@@ -40,7 +40,7 @@ sudo apt install libgl1-mesa-dev libopencv-dev
 export LIBROBOT_QT_ROOT="$HOME/Qt/6.8.3/gcc_64"
 test -f "$LIBROBOT_QT_ROOT/lib/cmake/Qt6/Qt6Config.cmake"
 test "$("$LIBROBOT_QT_ROOT/bin/qmake" -query QT_VERSION)" = 6.8.3
-sudo apt install ./librobot-1.2.0-Linux.deb
+sudo apt install ./librobot-1.2.1-Linux.deb
 ```
 
 Keep `LIBROBOT_QT_ROOT` in your shell profile. Pass
@@ -57,10 +57,10 @@ package database. If a tool requires an explicit stable prefix, set
 sudo apt remove librobot
 ```
 
-The portable TGZ contains the same `/usr`-relative layout. Install it with `sudo tar -xzf librobot-1.2.0-Linux.tar.gz -C / && sudo ldconfig`. To uninstall that archive, remove only its installed librobot entries:
+The portable TGZ contains the same `/usr`-relative layout. Install it with `sudo tar -xzf librobot-1.2.1-Linux.tar.gz -C / && sudo ldconfig`. To uninstall that archive, remove only its installed librobot entries:
 
 ```sh
-sudo rm -f /usr/lib/liblibrobot.so /usr/lib/liblibrobot.so.1 /usr/lib/liblibrobot.so.1.2.0
+sudo rm -f /usr/lib/liblibrobot.so /usr/lib/liblibrobot.so.1 /usr/lib/liblibrobot.so.1.2.1
 sudo rm -rf /usr/include/librobot /usr/lib/cmake/librobot /usr/share/librobot
 sudo ldconfig
 ```
@@ -71,7 +71,7 @@ Install prerequisites with Homebrew, then extract the unsigned arm64 TGZ and run
 
 ```sh
 brew install qt@6 opencv
-tar -xzf librobot-1.2.0-Darwin.tar.gz
+tar -xzf librobot-1.2.1-Darwin.tar.gz
 sudo ./install.sh
 export LIBROBOT_ROOT=/usr/local
 ```
@@ -124,6 +124,7 @@ Source-build options are:
 
 - `LIBROBOT_ENABLE_AMCL` — defaults to `OFF`; public builds need no access to AMCL.
 - `LIBROBOT_ENABLE_OPENCV` — defaults to `ON`; set it to `OFF` for a camera-free build.
+- `LIBROBOT_DISABLE_SKELETON` — defaults to `OFF`; set it to `ON` only for a skeleton-free build.
 - `BUILD_TESTING` — enables the automated test suite when this is the top-level project.
 
 Installed-package feature metadata is separate from those source options.
@@ -137,6 +138,9 @@ if(NOT librobot_AMCL_ENABLED)
 endif()
 if(NOT librobot_OPENCV_ENABLED)
     message(FATAL_ERROR "Installed librobot does not contain OpenCV support")
+endif()
+if(NOT librobot_SKELETON_ENABLED)
+    message(FATAL_ERROR "Installed librobot does not contain skeleton support")
 endif()
 ```
 

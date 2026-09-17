@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(librobot VERSION 1.2.0 LANGUAGES CXX)
+project(librobot VERSION 1.2.1 LANGUAGES CXX)
 
 option(LIBROBOT_ENABLE_AMCL "Build AMCL localization support" OFF)
 option(LIBROBOT_ENABLE_OPENCV "Build camera support using OpenCV" ON)
 option(LIBROBOT_DISABLE_OPENCV "Deprecated: disable OpenCV support" OFF)
 option(LIBROBOT_BUILD_TESTING "Build librobot tests when used as a subproject" OFF)
-option(LIBROBOT_DISABLE_SKELETON "Disable skeleton module" ON)
+option(LIBROBOT_DISABLE_SKELETON "Disable skeleton module" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -89,6 +89,11 @@ if(LIBROBOT_ENABLE_OPENCV)
     set(LIBROBOT_OPENCV_ENABLED_LITERAL TRUE)
 else()
     set(LIBROBOT_OPENCV_ENABLED_LITERAL FALSE)
+endif()
+if(LIBROBOT_DISABLE_SKELETON)
+    set(LIBROBOT_SKELETON_ENABLED_LITERAL FALSE)
+else()
+    set(LIBROBOT_SKELETON_ENABLED_LITERAL TRUE)
 endif()
 configure_package_config_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/librobotConfig.cmake.in

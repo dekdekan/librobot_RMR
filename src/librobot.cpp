@@ -7,6 +7,8 @@
 #include <opencv2/videoio.hpp>
 #endif
 #include <algorithm>
+#include <array>
+#include <cstring>
 #include <utility>
 
 libRobot::~libRobot() {
@@ -236,11 +238,15 @@ void libRobot::skeletonprocess() {
   skeletonCom.init_connection(skeleton_ipaddress, skeleton_ip_portIn,
                               skeleton_ip_portOut);
 
-  skeleton bbbk;
+  std::array<char, sizeof(skeleton) + 1> message{};
   while (!stopRequested_.load(std::memory_order_acquire)) {
-    if (skeletonCom.getMessage((char *)&bbbk.joints, sizeof(char) * 1800) == -1)
+    const int received = skeletonCom.getMessage(
+        message.data(), static_cast<int>(message.size()));
+    if (received != static_cast<int>(sizeof(skeleton)))
       continue;
 
+    skeleton bbbk{};
+    std::memcpy(&bbbk, message.data(), sizeof(bbbk));
     if (skeleton_callback)
       skeleton_callback(bbbk);
   }

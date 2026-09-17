@@ -1,9 +1,21 @@
-if(NOT DEFINED CONFIG_FILE OR NOT DEFINED EXPECT_OPENCV)
-    message(FATAL_ERROR "CONFIG_FILE and EXPECT_OPENCV are required.")
+if(NOT DEFINED CONFIG_FILE OR NOT DEFINED EXPECT_OPENCV OR
+        NOT DEFINED EXPECT_SKELETON)
+    message(FATAL_ERROR
+        "CONFIG_FILE, EXPECT_OPENCV, and EXPECT_SKELETON are required.")
 endif()
 
 file(READ "${CONFIG_FILE}" config_contents)
 string(REPLACE "\r\n" "\n" config_contents "${config_contents}")
+
+if(EXPECT_SKELETON)
+    string(FIND "${config_contents}" "set(librobot_SKELETON_ENABLED TRUE)" skeleton_value_index)
+else()
+    string(FIND "${config_contents}" "set(librobot_SKELETON_ENABLED FALSE)" skeleton_value_index)
+endif()
+if(skeleton_value_index EQUAL -1)
+    message(FATAL_ERROR
+        "Generated configuration has incorrect literal skeleton metadata.")
+endif()
 
 string(FIND "${config_contents}" "find_dependency(Qt6 6.5 REQUIRED COMPONENTS Core Network)" qt_dependency_index)
 if(qt_dependency_index EQUAL -1)

@@ -52,7 +52,8 @@ foreach(required_fragment IN ITEMS
         "official Qt Online Installer"
         "LIBROBOT_QT_ROOT"
         "librobot_AMCL_ENABLED"
-        "librobot_OPENCV_ENABLED")
+        "librobot_OPENCV_ENABLED"
+        "librobot_SKELETON_ENABLED")
     if(NOT readme MATCHES "${required_fragment}")
         message(FATAL_ERROR "README contract is missing: ${required_fragment}")
     endif()

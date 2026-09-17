@@ -34,6 +34,8 @@ endif()
 
 if(LIBROBOT_DISABLE_SKELETON)
     target_compile_definitions(librobot PUBLIC DISABLE_SKELETON)
+else()
+    target_compile_definitions(librobot PUBLIC LIBROBOT_HAS_SKELETON=1)
 endif()
 
 if(LIBROBOT_ENABLE_OPENCV)

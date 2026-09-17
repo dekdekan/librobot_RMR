@@ -3,10 +3,8 @@ name: Release
 "on":
   push:
     tags:
-      - v1.2.0-rc.1
-      - v1.2.0-rc.2
-      - v1.2.0-rc.3
-      - v1.2.0
+      - v1.2.1-rc.1
+      - v1.2.1
 
 permissions:
   contents: read
@@ -154,6 +152,7 @@ jobs:
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
             -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=ON `
             -DLIBROBOT_ENABLE_OPENCV=ON `
+            -DLIBROBOT_DISABLE_SKELETON=OFF `
             -DFETCHCONTENT_SOURCE_DIR_AMCL="${{ github.workspace }}/private-amcl" `
             -DOpenCV_DIR="$env:OpenCV_DIR" `
             -DLIBROBOT_BUILD_MANIFEST="${{ github.workspace }}/build-manifest.txt" `
@@ -166,6 +165,7 @@ jobs:
           cmake -S . -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
           -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=ON
           -DLIBROBOT_ENABLE_OPENCV=ON
+          -DLIBROBOT_DISABLE_SKELETON=OFF
           -DFETCHCONTENT_SOURCE_DIR_AMCL="${{ github.workspace }}/private-amcl"
           -DLIBROBOT_BUILD_MANIFEST="${{ github.workspace }}/build-manifest.txt"
           -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES="${{ github.workspace }}/package-manifest.cmake"
@@ -177,6 +177,7 @@ jobs:
           cmake -S . -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
           -DBUILD_TESTING=ON -DLIBROBOT_ENABLE_AMCL=ON
           -DLIBROBOT_ENABLE_OPENCV=ON
+          -DLIBROBOT_DISABLE_SKELETON=OFF
           -DFETCHCONTENT_SOURCE_DIR_AMCL="${{ github.workspace }}/private-amcl"
           -DLIBROBOT_BUILD_MANIFEST="${{ github.workspace }}/build-manifest.txt"
           -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES="${{ github.workspace }}/package-manifest.cmake"
@@ -202,6 +203,7 @@ jobs:
             "Compiler=$compilerId $compilerVersion (Visual Studio 2022)"
             "Qt=$qtVersion"
             'OpenCV=4.14.0'
+            'Skeleton=enabled'
           ) | Set-Content -LiteralPath build-manifest.txt -Encoding utf8
 
       - name: Record exact Ubuntu build manifest
@@ -216,6 +218,7 @@ jobs:
             echo "Compiler=GCC $(c++ -dumpfullversion -dumpversion)"
             echo "Qt=$($qt_tool -query QT_VERSION)"
             echo "OpenCV=$(pkg-config --modversion opencv4)"
+            echo 'Skeleton=enabled'
           } > build-manifest.txt
 
       - name: Record exact macOS build manifest
@@ -230,6 +233,7 @@ jobs:
             echo "Compiler=AppleClang $(xcrun clang++ --version | head -n 1)"
             echo "Qt=$($qt_tool -query QT_VERSION)"
             echo "OpenCV=$(brew list --versions opencv@4 | awk '{print $2}')"
+            echo 'Skeleton=enabled'
           } > build-manifest.txt
 
       - name: Build Windows Debug and Release
@@ -279,7 +283,8 @@ jobs:
               -DQt6_DIR="$env:QT_ROOT_DIR/lib/cmake/Qt6" `
               -DOpenCV_DIR="$env:OpenCV_DIR" `
               -DLIBROBOT_CONSUMER_EXPECT_AMCL=ON `
-              -DLIBROBOT_CONSUMER_EXPECT_OPENCV=ON
+              -DLIBROBOT_CONSUMER_EXPECT_OPENCV=ON `
+              -DLIBROBOT_CONSUMER_EXPECT_SKELETON=ON
             cmake --build $BuildDirectory --config Release --parallel 2
             $consumer = Join-Path $BuildDirectory 'Release/librobot_consumer.exe'
             if (-not (Test-Path -LiteralPath $consumer -PathType Leaf)) {
@@ -298,8 +303,8 @@ jobs:
           cpack --config build/CPackConfig.cmake -C Release -G NSIS
           cpack --config build/CPackConfig.cmake -C Release -G ZIP
           $packageDir = Join-Path $PWD 'build/packages'
-          $installer = Join-Path $packageDir 'librobot-1.2.0-win64.exe'
-          $archive = Join-Path $packageDir 'librobot-1.2.0-win64.zip'
+          $installer = Join-Path $packageDir 'librobot-1.2.1-win64.exe'
+          $archive = Join-Path $packageDir 'librobot-1.2.1-win64.zip'
           if (-not (Test-Path -LiteralPath $installer) -or -not (Test-Path -LiteralPath $archive)) {
             throw 'CPack did not produce the exact Windows NSIS and ZIP artifacts'
           }
@@ -410,22 +415,22 @@ jobs:
           cpack --config build-release/CPackConfig.cmake -C Release -G DEB
           cpack --config build-release/CPackConfig.cmake -C Release -G TGZ
           package_dir=build-release/packages
-          deb="$package_dir/librobot-1.2.0-Linux.deb"
-          tgz="$package_dir/librobot-1.2.0-Linux.tar.gz"
+          deb="$package_dir/librobot-1.2.1-Linux.deb"
+          tgz="$package_dir/librobot-1.2.1-Linux.tar.gz"
           test -f "$deb"
           test -f "$tgz"
           mkdir package-stage-deb package-stage-tgz
           dpkg-deb --extract "$deb" package-stage-deb
           tar -xzf "$tgz" -C package-stage-tgz
           for stage in package-stage-deb package-stage-tgz; do
-            test -f "$stage/usr/lib/liblibrobot.so.1.2.0"
+            test -f "$stage/usr/lib/liblibrobot.so.1.2.1"
             test -f "$stage/usr/include/librobot/librobot.h"
             test -f "$stage/usr/lib/cmake/librobot/librobotConfig.cmake"
             test -f "$stage/usr/share/librobot/build-manifest.txt"
             cmp build-manifest.txt "$stage/usr/share/librobot/build-manifest.txt"
-            file "$stage/usr/lib/liblibrobot.so.1.2.0" | grep -q 'x86-64'
+            file "$stage/usr/lib/liblibrobot.so.1.2.1" | grep -q 'x86-64'
             cmake \
-              -DLIBROBOT_LIBRARY="$stage/usr/lib/liblibrobot.so.1.2.0" \
+              -DLIBROBOT_LIBRARY="$stage/usr/lib/liblibrobot.so.1.2.1" \
               -DLIBROBOT_NM="$(command -v nm)" \
               -DLIBROBOT_PLATFORM=Linux \
               -P cmake/VerifyExportedSymbols.cmake
@@ -445,7 +450,8 @@ jobs:
               -Dlibrobot_DIR=/usr/lib/cmake/librobot \
               -DQt6_DIR="$LIBROBOT_QT_ROOT/lib/cmake/Qt6" \
               -DLIBROBOT_CONSUMER_EXPECT_AMCL=ON \
-              -DLIBROBOT_CONSUMER_EXPECT_OPENCV=ON
+              -DLIBROBOT_CONSUMER_EXPECT_OPENCV=ON \
+              -DLIBROBOT_CONSUMER_EXPECT_SKELETON=ON
             cmake --build "$build_dir" --parallel 2
             test -x "$build_dir/librobot_consumer"
             LD_LIBRARY_PATH="$LIBROBOT_QT_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
@@ -453,23 +459,23 @@ jobs:
           }
 
           sudo apt install --yes "$PWD/$deb"
-          test -f /usr/lib/liblibrobot.so.1.2.0
+          test -f /usr/lib/liblibrobot.so.1.2.1
           test -f /usr/lib/cmake/librobot/librobotConfig.cmake
           test_installed_consumer consumer-deb
           sudo apt remove --yes librobot
-          test ! -e /usr/lib/liblibrobot.so.1.2.0
+          test ! -e /usr/lib/liblibrobot.so.1.2.1
           test ! -e /usr/include/librobot
           test ! -e /usr/lib/cmake/librobot
           test ! -e /usr/share/librobot
 
           sudo tar -xzf "$tgz" -C /
           sudo ldconfig
-          test -f /usr/lib/liblibrobot.so.1.2.0
+          test -f /usr/lib/liblibrobot.so.1.2.1
           test_installed_consumer consumer-tgz
-          sudo rm -f /usr/lib/liblibrobot.so /usr/lib/liblibrobot.so.1 /usr/lib/liblibrobot.so.1.2.0
+          sudo rm -f /usr/lib/liblibrobot.so /usr/lib/liblibrobot.so.1 /usr/lib/liblibrobot.so.1.2.1
           sudo rm -rf /usr/include/librobot /usr/lib/cmake/librobot /usr/share/librobot
           sudo ldconfig
-          test ! -e /usr/lib/liblibrobot.so.1.2.0
+          test ! -e /usr/lib/liblibrobot.so.1.2.1
           test ! -e /usr/include/librobot
           test ! -e /usr/lib/cmake/librobot
           test ! -e /usr/share/librobot
@@ -487,20 +493,20 @@ jobs:
         run: |
           set -euo pipefail
           cpack --config build-release/CPackConfig.cmake -C Release -G TGZ
-          package=build-release/packages/librobot-1.2.0-Darwin.tar.gz
+          package=build-release/packages/librobot-1.2.1-Darwin.tar.gz
           test -f "$package"
           mkdir package-stage-tgz
           tar -xzf "$package" -C package-stage-tgz
-          test -f package-stage-tgz/lib/liblibrobot.1.2.0.dylib
+          test -f package-stage-tgz/lib/liblibrobot.1.2.1.dylib
           test -f package-stage-tgz/include/librobot/librobot.h
           test -f package-stage-tgz/lib/cmake/librobot/librobotConfig.cmake
           test "$(/usr/bin/stat -f %A package-stage-tgz/install.sh)" = 755
           test "$(/usr/bin/stat -f %A package-stage-tgz/uninstall.sh)" = 755
           test -f package-stage-tgz/share/librobot/build-manifest.txt
           cmp build-manifest.txt package-stage-tgz/share/librobot/build-manifest.txt
-          file package-stage-tgz/lib/liblibrobot.1.2.0.dylib | grep -q arm64
+          file package-stage-tgz/lib/liblibrobot.1.2.1.dylib | grep -q arm64
           cmake \
-            -DLIBROBOT_LIBRARY=package-stage-tgz/lib/liblibrobot.1.2.0.dylib \
+            -DLIBROBOT_LIBRARY=package-stage-tgz/lib/liblibrobot.1.2.1.dylib \
             -DLIBROBOT_NM="$(command -v nm)" \
             -DLIBROBOT_PLATFORM=Darwin \
             -P cmake/VerifyExportedSymbols.cmake
@@ -515,7 +521,7 @@ jobs:
           )
           export LIBROBOT_ROOT=/usr/local
           test "$LIBROBOT_ROOT" = /usr/local
-          test -f /usr/local/lib/liblibrobot.1.2.0.dylib
+          test -f /usr/local/lib/liblibrobot.1.2.1.dylib
           test -f /usr/local/lib/cmake/librobot/librobotConfig.cmake
           cmake -S tests/consumer -B consumer-macos -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
@@ -523,7 +529,8 @@ jobs:
             -DQt6_DIR="$QT_ROOT_DIR/lib/cmake/Qt6" \
             -DOpenCV_DIR="$OpenCV_DIR" \
             -DLIBROBOT_CONSUMER_EXPECT_AMCL=ON \
-            -DLIBROBOT_CONSUMER_EXPECT_OPENCV=ON
+            -DLIBROBOT_CONSUMER_EXPECT_OPENCV=ON \
+            -DLIBROBOT_CONSUMER_EXPECT_SKELETON=ON
           cmake --build consumer-macos --parallel 2
           test -x consumer-macos/librobot_consumer
           DYLD_LIBRARY_PATH="/usr/local/lib:$QT_ROOT_DIR/lib:$(brew --prefix opencv@4)/lib:${DYLD_LIBRARY_PATH:-}" \
@@ -572,11 +579,11 @@ jobs:
         run: |
           set -euo pipefail
           packages=(
-            librobot-1.2.0-win64.exe
-            librobot-1.2.0-win64.zip
-            librobot-1.2.0-Linux.deb
-            librobot-1.2.0-Linux.tar.gz
-            librobot-1.2.0-Darwin.tar.gz
+            librobot-1.2.1-win64.exe
+            librobot-1.2.1-win64.zip
+            librobot-1.2.1-Linux.deb
+            librobot-1.2.1-Linux.tar.gz
+            librobot-1.2.1-Darwin.tar.gz
           )
           for package in "${packages[@]}"; do
             test -f "dist/$package"
@@ -592,9 +599,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir manifest-linux
-          unzip -p dist/librobot-1.2.0-win64.zip share/librobot/build-manifest.txt > manifest-windows.txt
-          dpkg-deb --extract dist/librobot-1.2.0-Linux.deb manifest-linux
-          tar -xOf dist/librobot-1.2.0-Darwin.tar.gz share/librobot/build-manifest.txt > manifest-macos.txt
+          unzip -p dist/librobot-1.2.1-win64.zip share/librobot/build-manifest.txt > manifest-windows.txt
+          dpkg-deb --extract dist/librobot-1.2.1-Linux.deb manifest-linux
+          tar -xOf dist/librobot-1.2.1-Darwin.tar.gz share/librobot/build-manifest.txt > manifest-macos.txt
           {
             echo "librobot $GITHUB_REF_NAME"
             echo
@@ -611,7 +618,7 @@ jobs:
           } > release-notes.md
 
       - name: Publish release candidate
-        if: github.ref_name == 'v1.2.0-rc.1' || github.ref_name == 'v1.2.0-rc.2' || github.ref_name == 'v1.2.0-rc.3'
+        if: github.ref_name == 'v1.2.1-rc.1'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -621,7 +628,7 @@ jobs:
           --title "$GITHUB_REF_NAME" --notes-file release-notes.md
 
       - name: Publish final release
-        if: github.ref_name == 'v1.2.0'
+        if: github.ref_name == 'v1.2.1'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
