@@ -27,7 +27,6 @@
 #include <cmath>
 #include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <math.h>
 #include <stdint.h>
 
@@ -123,7 +122,7 @@ typedef long (*src_callback_kobuki_data)(void *user_data,
 
 class CKobuki {
 public:
-  CKobuki() { std::cout << "kobuki instantiated" << std::endl; };
+  CKobuki() = default;
   virtual ~CKobuki() {
 
   };

@@ -1,36 +1,33 @@
 #ifndef LIBROBOT_H
 #define LIBROBOT_H
-#ifndef DISABLE_OPENCV
-#define useCamera
-#endif
-#ifdef useCamera
-#include "opencv2/core/utility.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/videoio.hpp"
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-
+#if defined(LIBROBOT_HAS_OPENCV) && LIBROBOT_HAS_OPENCV
+#include <opencv2/core/mat.hpp>
 #endif
 
 #include "CKobuki.h"
 #include "robot_global.h"
 #include "rplidar.h"
 #include "udp_communication.h"
-#include <algorithm>
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+#include "amcl_types.h"
+#endif
 #include <atomic>
+#include <filesystem>
 #include <functional>
-#include <future>
-#include <iostream>
-#include <list>
 #include <memory>
 #include <mutex>
-#include <random>
+#include <string>
 #include <thread>
-#include <utility>
+#include <vector>
 
 #include "skeleton.h"
+
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+namespace librobot_detail {
+class AMCLAdapter;
+}
+#endif
+
 class ROBOT_EXPORT libRobot {
 public:
   ~libRobot();
@@ -44,16 +41,10 @@ public:
 
   // default functions.. please do not rewrite.. make your own callback
   inline static std::function<int(const TKobukiData &)> do_nothing_robot =
-      [](const TKobukiData &data) {
-        std::cout << "data z kobuki" << std::endl;
-        return 0;
-      };
+      [](const TKobukiData &) { return 0; };
 
   inline static std::function<int(const std::vector<LaserData> &)>
-      do_nothing_laser = [](const std::vector<LaserData> &data) {
-        std::cout << "data z rplidar" << std::endl;
-        return 0;
-      };
+      do_nothing_laser = [](const std::vector<LaserData> &) { return 0; };
 
   void robotStart();
   void setLaserParameters(
@@ -80,7 +71,17 @@ public:
 
   void setRotationSpeed(double radpersec);
   void setArcSpeed(int mmpersec, int radius);
-#ifndef DISABLE_OPENCV
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+  bool setAMCLParameters(const std::filesystem::path &mapPath,
+                         int particleCount, double rotationStd,
+                         double translationStd, AMCLCallback callback,
+                         std::string *errorMessage = nullptr);
+  Particle getBestParticle() const;
+  const GridMap &getAmclMap() const;
+  void getGridCoordinates(double realX, double realY, int &gridX,
+                          int &gridY) const;
+#endif
+#if defined(LIBROBOT_HAS_OPENCV) && LIBROBOT_HAS_OPENCV
   void setCameraParameters(std::function<int(const cv::Mat &)> callback,
                            std::string link) {
 
@@ -112,14 +113,14 @@ private:
       0.23; // wheelbase distance in meters, from kobuki manual
             // https://yujinrobot.github.io/kobuki/doxygen/enAppendixProtocolSpecification.html
 
-  std::promise<void> ready_promise;
-  std::shared_future<void> readyFuture;
+  std::atomic<bool> stopRequested_{false};
+  std::mutex lifecycleMutex_;
+  bool robotStarted_{false};
   int wasLaserSet;
   int wasRobotSet;
   int wasCameraSet;
   int wasSkeletonSet;
   // veci na laser
-  LaserMeasurement copyOfLaserData;
   void laserprocess();
   std::string laser_ipaddress;
   int laser_ip_portOut;
@@ -137,15 +138,21 @@ private:
   void robotprocess();
   std::function<int(const TKobukiData &)> robot_callback = nullptr;
 
+#if defined(LIBROBOT_HAS_AMCL) && LIBROBOT_HAS_AMCL
+  std::unique_ptr<librobot_detail::AMCLAdapter> amclAdapter_;
+  bool amclConfigurationRequested_{false};
+  bool amclConfigurationFailed_{false};
+#endif
+
   udp_communication laserCom;
   udp_communication robotCom;
 
   // veci pre kameru -- pozor na kameru, neotvarat ak nahodou chcete kameru
   // pripojit na detekciu kostry...
-#ifndef DISABLE_OPENCV
+#if defined(LIBROBOT_HAS_OPENCV) && LIBROBOT_HAS_OPENCV
   std::string camera_link;
   std::thread camerathreadhandle;
-  std::function<int(cv::Mat)> camera_callback = nullptr;
+  std::function<int(const cv::Mat &)> camera_callback = nullptr;
   void imageViewer();
 #endif
 
