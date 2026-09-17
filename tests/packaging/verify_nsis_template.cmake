@@ -51,6 +51,7 @@ endfunction()
 
 extract_nsis_function(".onInit" installer_on_init)
 extract_nsis_function("un.onInit" uninstaller_on_init)
+extract_nsis_function("AddToPath" add_to_path)
 
 require_nsis_command(nsis_script "RequestExecutionLevel user"
     "run without machine-wide elevation")
@@ -67,6 +68,15 @@ require_nsis_command(installer_on_init "StrCpy $SV_ALLUSERS \"JustMe\""
     "fix the installer mode to current-user")
 require_nsis_command(uninstaller_on_init "SetShellVarContext current"
     "keep uninstaller registry cleanup current-user scoped")
+require_nsis_command(add_to_path
+    "ReadRegStr $1 HKCU \"Environment\" \"PATH\""
+    "read the current-user PATH instead of the potentially oversized process PATH")
+
+string(FIND "${add_to_path}" "ReadEnvStr $1 PATH" process_path_index)
+if(NOT process_path_index EQUAL -1)
+    message(FATAL_ERROR
+        "Generated project.nsi still reads the process PATH before updating HKCU")
+endif()
 
 string(FIND "${installer_on_init}" "$DOCUMENTS\\librobot" documents_index)
 if(NOT documents_index EQUAL -1)

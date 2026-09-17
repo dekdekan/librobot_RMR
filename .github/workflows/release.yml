@@ -5,6 +5,7 @@ name: Release
     tags:
       - v1.2.0-rc.1
       - v1.2.0-rc.2
+      - v1.2.0-rc.3
       - v1.2.0
 
 permissions:
@@ -610,7 +611,7 @@ jobs:
           } > release-notes.md
 
       - name: Publish release candidate
-        if: github.ref_name == 'v1.2.0-rc.1' || github.ref_name == 'v1.2.0-rc.2'
+        if: github.ref_name == 'v1.2.0-rc.1' || github.ref_name == 'v1.2.0-rc.2' || github.ref_name == 'v1.2.0-rc.3'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash

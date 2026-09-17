@@ -58,6 +58,10 @@ function(librobot_customize_nsis_template input_template output_template)
         "SetShellVarContext all" "SetShellVarContext current" 4
         "shell-context")
     _librobot_replace_nsis_template(nsis_template_contents
+        [=[ReadEnvStr $1 PATH]=]
+        [=[ReadRegStr $1 HKCU "Environment" "PATH"]=]
+        1 "current-user PATH lookup")
+    _librobot_replace_nsis_template(nsis_template_contents
         [=[ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "UninstallString"]=]
         [=[ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "UninstallString"]=]
         1 "upgrade-uninstaller registry")
