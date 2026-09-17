@@ -3,8 +3,8 @@ name: Release
 "on":
   push:
     tags:
-      - v1.1.0-rc.1
-      - v1.1.0
+      - v1.2.0-rc.1
+      - v1.2.0
 
 permissions:
   contents: read
@@ -296,8 +296,8 @@ jobs:
           cpack --config build/CPackConfig.cmake -C Release -G NSIS
           cpack --config build/CPackConfig.cmake -C Release -G ZIP
           $packageDir = Join-Path $PWD 'build/packages'
-          $installer = Join-Path $packageDir 'librobot-1.1.0-win64.exe'
-          $archive = Join-Path $packageDir 'librobot-1.1.0-win64.zip'
+          $installer = Join-Path $packageDir 'librobot-1.2.0-win64.exe'
+          $archive = Join-Path $packageDir 'librobot-1.2.0-win64.zip'
           if (-not (Test-Path -LiteralPath $installer) -or -not (Test-Path -LiteralPath $archive)) {
             throw 'CPack did not produce the exact Windows NSIS and ZIP artifacts'
           }
@@ -408,22 +408,22 @@ jobs:
           cpack --config build-release/CPackConfig.cmake -C Release -G DEB
           cpack --config build-release/CPackConfig.cmake -C Release -G TGZ
           package_dir=build-release/packages
-          deb="$package_dir/librobot-1.1.0-Linux.deb"
-          tgz="$package_dir/librobot-1.1.0-Linux.tar.gz"
+          deb="$package_dir/librobot-1.2.0-Linux.deb"
+          tgz="$package_dir/librobot-1.2.0-Linux.tar.gz"
           test -f "$deb"
           test -f "$tgz"
           mkdir package-stage-deb package-stage-tgz
           dpkg-deb --extract "$deb" package-stage-deb
           tar -xzf "$tgz" -C package-stage-tgz
           for stage in package-stage-deb package-stage-tgz; do
-            test -f "$stage/usr/lib/liblibrobot.so.1.1.0"
+            test -f "$stage/usr/lib/liblibrobot.so.1.2.0"
             test -f "$stage/usr/include/librobot/librobot.h"
             test -f "$stage/usr/lib/cmake/librobot/librobotConfig.cmake"
             test -f "$stage/usr/share/librobot/build-manifest.txt"
             cmp build-manifest.txt "$stage/usr/share/librobot/build-manifest.txt"
-            file "$stage/usr/lib/liblibrobot.so.1.1.0" | grep -q 'x86-64'
+            file "$stage/usr/lib/liblibrobot.so.1.2.0" | grep -q 'x86-64'
             cmake \
-              -DLIBROBOT_LIBRARY="$stage/usr/lib/liblibrobot.so.1.1.0" \
+              -DLIBROBOT_LIBRARY="$stage/usr/lib/liblibrobot.so.1.2.0" \
               -DLIBROBOT_NM="$(command -v nm)" \
               -DLIBROBOT_PLATFORM=Linux \
               -P cmake/VerifyExportedSymbols.cmake
@@ -451,23 +451,23 @@ jobs:
           }
 
           sudo apt install --yes "$PWD/$deb"
-          test -f /usr/lib/liblibrobot.so.1.1.0
+          test -f /usr/lib/liblibrobot.so.1.2.0
           test -f /usr/lib/cmake/librobot/librobotConfig.cmake
           test_installed_consumer consumer-deb
           sudo apt remove --yes librobot
-          test ! -e /usr/lib/liblibrobot.so.1.1.0
+          test ! -e /usr/lib/liblibrobot.so.1.2.0
           test ! -e /usr/include/librobot
           test ! -e /usr/lib/cmake/librobot
           test ! -e /usr/share/librobot
 
           sudo tar -xzf "$tgz" -C /
           sudo ldconfig
-          test -f /usr/lib/liblibrobot.so.1.1.0
+          test -f /usr/lib/liblibrobot.so.1.2.0
           test_installed_consumer consumer-tgz
-          sudo rm -f /usr/lib/liblibrobot.so /usr/lib/liblibrobot.so.1 /usr/lib/liblibrobot.so.1.1.0
+          sudo rm -f /usr/lib/liblibrobot.so /usr/lib/liblibrobot.so.1 /usr/lib/liblibrobot.so.1.2.0
           sudo rm -rf /usr/include/librobot /usr/lib/cmake/librobot /usr/share/librobot
           sudo ldconfig
-          test ! -e /usr/lib/liblibrobot.so.1.1.0
+          test ! -e /usr/lib/liblibrobot.so.1.2.0
           test ! -e /usr/include/librobot
           test ! -e /usr/lib/cmake/librobot
           test ! -e /usr/share/librobot
@@ -485,20 +485,20 @@ jobs:
         run: |
           set -euo pipefail
           cpack --config build-release/CPackConfig.cmake -C Release -G TGZ
-          package=build-release/packages/librobot-1.1.0-Darwin.tar.gz
+          package=build-release/packages/librobot-1.2.0-Darwin.tar.gz
           test -f "$package"
           mkdir package-stage-tgz
           tar -xzf "$package" -C package-stage-tgz
-          test -f package-stage-tgz/lib/liblibrobot.1.1.0.dylib
+          test -f package-stage-tgz/lib/liblibrobot.1.2.0.dylib
           test -f package-stage-tgz/include/librobot/librobot.h
           test -f package-stage-tgz/lib/cmake/librobot/librobotConfig.cmake
           test "$(/usr/bin/stat -f %A package-stage-tgz/install.sh)" = 755
           test "$(/usr/bin/stat -f %A package-stage-tgz/uninstall.sh)" = 755
           test -f package-stage-tgz/share/librobot/build-manifest.txt
           cmp build-manifest.txt package-stage-tgz/share/librobot/build-manifest.txt
-          file package-stage-tgz/lib/liblibrobot.1.1.0.dylib | grep -q arm64
+          file package-stage-tgz/lib/liblibrobot.1.2.0.dylib | grep -q arm64
           cmake \
-            -DLIBROBOT_LIBRARY=package-stage-tgz/lib/liblibrobot.1.1.0.dylib \
+            -DLIBROBOT_LIBRARY=package-stage-tgz/lib/liblibrobot.1.2.0.dylib \
             -DLIBROBOT_NM="$(command -v nm)" \
             -DLIBROBOT_PLATFORM=Darwin \
             -P cmake/VerifyExportedSymbols.cmake
@@ -513,7 +513,7 @@ jobs:
           )
           export LIBROBOT_ROOT=/usr/local
           test "$LIBROBOT_ROOT" = /usr/local
-          test -f /usr/local/lib/liblibrobot.1.1.0.dylib
+          test -f /usr/local/lib/liblibrobot.1.2.0.dylib
           test -f /usr/local/lib/cmake/librobot/librobotConfig.cmake
           cmake -S tests/consumer -B consumer-macos -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
@@ -570,11 +570,11 @@ jobs:
         run: |
           set -euo pipefail
           packages=(
-            librobot-1.1.0-win64.exe
-            librobot-1.1.0-win64.zip
-            librobot-1.1.0-Linux.deb
-            librobot-1.1.0-Linux.tar.gz
-            librobot-1.1.0-Darwin.tar.gz
+            librobot-1.2.0-win64.exe
+            librobot-1.2.0-win64.zip
+            librobot-1.2.0-Linux.deb
+            librobot-1.2.0-Linux.tar.gz
+            librobot-1.2.0-Darwin.tar.gz
           )
           for package in "${packages[@]}"; do
             test -f "dist/$package"
@@ -590,9 +590,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir manifest-linux
-          unzip -p dist/librobot-1.1.0-win64.zip share/librobot/build-manifest.txt > manifest-windows.txt
-          dpkg-deb --extract dist/librobot-1.1.0-Linux.deb manifest-linux
-          tar -xOf dist/librobot-1.1.0-Darwin.tar.gz share/librobot/build-manifest.txt > manifest-macos.txt
+          unzip -p dist/librobot-1.2.0-win64.zip share/librobot/build-manifest.txt > manifest-windows.txt
+          dpkg-deb --extract dist/librobot-1.2.0-Linux.deb manifest-linux
+          tar -xOf dist/librobot-1.2.0-Darwin.tar.gz share/librobot/build-manifest.txt > manifest-macos.txt
           {
             echo "librobot $GITHUB_REF_NAME"
             echo
@@ -609,7 +609,7 @@ jobs:
           } > release-notes.md
 
       - name: Publish release candidate
-        if: github.ref_name == 'v1.1.0-rc.1'
+        if: github.ref_name == 'v1.2.0-rc.1'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -619,7 +619,7 @@ jobs:
           --title "$GITHUB_REF_NAME" --notes-file release-notes.md
 
       - name: Publish final release
-        if: github.ref_name == 'v1.1.0'
+        if: github.ref_name == 'v1.2.0'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash

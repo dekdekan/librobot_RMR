@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(librobot VERSION 1.1.0 LANGUAGES CXX)
+project(librobot VERSION 1.2.0 LANGUAGES CXX)
 
 option(LIBROBOT_ENABLE_AMCL "Build AMCL localization support" OFF)
 option(LIBROBOT_ENABLE_OPENCV "Build camera support using OpenCV" ON)

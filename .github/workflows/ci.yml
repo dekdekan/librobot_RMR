@@ -6,8 +6,8 @@ name: CI
     branches:
       - feature/amcl-opencv-integration
     tags:
-      - v1.1.0-rc.1
-      - v1.1.0
+      - v1.2.0-rc.1
+      - v1.2.0
 
 permissions:
   contents: read
