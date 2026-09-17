@@ -4,6 +4,7 @@ name: Release
   push:
     tags:
       - v1.2.0-rc.1
+      - v1.2.0-rc.2
       - v1.2.0
 
 permissions:
@@ -344,7 +345,7 @@ jobs:
             }
             Test-LibrobotConsumer -Prefix $stage -BuildDirectory (Join-Path $PWD 'consumer-zip')
           } finally {
-            [Environment]::SetEnvironmentVariable('LIBROBOT_ROOT', $null, [EnvironmentVariableTarget]::User)
+            Remove-ItemProperty -LiteralPath 'HKCU:\Environment' -Name 'LIBROBOT_ROOT' -ErrorAction SilentlyContinue
             [Environment]::SetEnvironmentVariable('Path', $originalUserPath, [EnvironmentVariableTarget]::User)
           }
           Remove-Item -LiteralPath $stage -Recurse -Force
@@ -609,7 +610,7 @@ jobs:
           } > release-notes.md
 
       - name: Publish release candidate
-        if: github.ref_name == 'v1.2.0-rc.1'
+        if: github.ref_name == 'v1.2.0-rc.1' || github.ref_name == 'v1.2.0-rc.2'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
